@@ -7,17 +7,19 @@
         xmlns:vm="clr-namespace:VideoExplorerMVVM.ViewModel"
         xmlns:m="clr-namespace:VideoExplorerMVVM.Model"
         mc:Ignorable="d"
-        Title="Video Explorer" Height="450" Width="800">
+        Title="Video Explorer" Height="1080" Width="1920">
     <Window.DataContext>
         <vm:VideoExplorerViewModel/>
     </Window.DataContext>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="245.077"/>
+            <ColumnDefinition Width="54.923"/>
+            <ColumnDefinition Width="9*"/>
+            <ColumnDefinition Width="91*"/>
         </Grid.ColumnDefinitions>
 
-        <TreeView Grid.Column="0" ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged">
+        <TreeView Grid.Column="0" ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged" Grid.ColumnSpan="2">
             <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate DataType="{x:Type vm:FolderViewModel}" ItemsSource="{Binding Videos}">
                     <TextBlock Text="{Binding DisplayFolderName}"/>
@@ -34,16 +36,16 @@
             </TreeView.ItemTemplate>
         </TreeView>
 
-        <StackPanel Grid.Column="1">
+        <StackPanel Grid.Column="2" Grid.ColumnSpan="2">
             <MediaElement Name="mediaElement" LoadedBehavior="Manual" MediaOpened="MediaElement_MediaOpened" MediaEnded="MediaElement_MediaEnded"/>
             <StackPanel Orientation="Horizontal">
-                <Button Content="Play" Command="{Binding PlayCommand}" />
-                <Button Content="Pause" Command="{Binding PauseCommand}" />
-                <Button Content="Stop" Command="{Binding StopCommand}" />
-                <TextBlock Text="Volume:" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                <Slider Name="volumeSlider" Minimum="0" Maximum="1" Value="0.5" Width="100" Margin="5,0" ValueChanged="VolumeSlider_ValueChanged"/>
+                <Button Content="Play" Command="{Binding PlayCommand}" Height="24" Width="100" Margin="10,10,10,0"/>
+                <Button Content="Pause" Command="{Binding PauseCommand}" Height="24" Width="100" Margin="0,10,10,0"/>
+                <Button Content="Stop" Command="{Binding StopCommand}" Height="24" Width="100" Margin="0,10,0,0"/>
+                <TextBlock Text="Volume:" VerticalAlignment="Center" Margin="20,10,0,0" Width="50"/>
+                <Slider x:Name="volumeSlider" Margin="0,15,0,0" Minimum="0" Maximum="1" Value="0.5" Width="108" ValueChanged="VolumeSlider_ValueChanged"/>
             </StackPanel>
-            <Slider Name="seekBar" Minimum="0" Maximum="{Binding SeekBarMaximum}"  ValueChanged="SeekBar_ValueChanged" />
+            <Slider x:Name="seekBar" Minimum="0" Maximum="{Binding SeekBarMaximum}"  ValueChanged="SeekBar_ValueChanged" Margin="0,10,0,0"/>
         </StackPanel>
     </Grid>
 </Window>
