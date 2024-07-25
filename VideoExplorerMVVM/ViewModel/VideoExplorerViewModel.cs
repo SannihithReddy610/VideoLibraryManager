@@ -1,16 +1,17 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿#region Directives
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Controls;
 using System.Windows.Input;
 using VideoExplorerMVVM.Model;
-
+#endregion
 
 namespace VideoExplorerMVVM.ViewModel
 {
     public class VideoExplorerViewModel : ViewModelBase
     {
-
+        #region Constructor
         public VideoExplorerViewModel()
         {
             LoadVideosCommand = new RelayCommand(LoadVideos);
@@ -20,7 +21,9 @@ namespace VideoExplorerMVVM.ViewModel
             VideoDoubleClickCommand = new RelayCommand<VideoFile>(OnVideoDoubleClick);
             LoadVideos();
         }
+        #endregion
 
+        #region Properties
         public VideoFile SelectedVideo
         {
             get => _selectedVideo;
@@ -51,10 +54,24 @@ namespace VideoExplorerMVVM.ViewModel
             set => SetProperty(ref seekBarMaximum, value);
         }
 
+        public ObservableCollection<FolderViewModel> Folders { get; } = new ObservableCollection<FolderViewModel>();
+        public ICommand LoadVideosCommand { get; }
+        public ICommand PlayCommand { get; }
+        public ICommand PauseCommand { get; }
+        public ICommand StopCommand { get; }
+        public ICommand VideoDoubleClickCommand { get; }
+        #endregion
+
+        #region Private Methods
+        /// <summary>
+        /// The LoadVideos method clears the existing folder list, retrieves video files 
+        /// from specified directories, groups them by folder, 
+        /// and updates the Folders collection with FolderViewModel instances for each group.
+        /// </summary>
         private void LoadVideos()
         {
             Folders.Clear();
-            var videoFiles = GetVideoFiles(new List<string> { "C:\\Users", "D:\\", "G:\\" });
+            var videoFiles = GetVideoFiles(["C:\\Users", "D:\\", "G:\\"]);
 
             var groupedVideos = videoFiles.GroupBy(v => v.FolderPath);
 
@@ -69,6 +86,12 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
+        /// <summary>
+        /// The GetVideoFiles method retrieves video files from a list of root paths, 
+        /// filtering by specific file extensions
+        /// </summary>
+        /// <param name="rootPaths"></param>
+        /// <returns></returns>
         private IEnumerable<VideoFile> GetVideoFiles(List<string> rootPaths)
         {
             var videoFiles = new List<VideoFile>();
@@ -109,7 +132,13 @@ namespace VideoExplorerMVVM.ViewModel
             return videoFiles;
         }
 
-        private List<string> GetFiles(string path, List<string> files)
+        /// <summary>
+        /// GetFiles method recursively collects all file paths within a given directory 
+        /// and its subdirectories into a provided list.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="files"></param>
+        private void GetFiles(string path, List<string> files)
         {
             try
             {
@@ -138,10 +167,12 @@ namespace VideoExplorerMVVM.ViewModel
                 }
             }
             catch (Exception ex) { }
-
-            return files;
         }
 
+        /// <summary>
+        /// Play method plays the selected video in the MediaElement control if present, 
+        /// updates playback state variables.
+        /// </summary>
         private void Play()
         {
             if (MediaElement != null)
@@ -162,6 +193,10 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
+        /// <summary>
+        /// Pause method pauses the currently playing video in the MediaElement control 
+        /// and updates playback state variables.
+        /// </summary>
         private void Pause()
         {
             if (MediaElement != null)
@@ -174,6 +209,10 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
+        /// <summary>
+        /// Stop method stops the currently playing video in the MediaElement control 
+        /// and updates playback state variables.
+        /// </summary>
         private void Stop()
         {
             if (MediaElement != null)
@@ -186,36 +225,50 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
+        /// <summary>
+        /// Returns true if the media is not currently playing.
+        /// </summary>
         private bool CanPlay() => !_isPlaying;
+
+        /// <summary>
+        /// Returns true if the media is currently playing.
+        /// </summary>
         private bool CanPause() => _isPlaying;
+
+        /// <summary>
+        /// Returns true if the media is either playing or paused.
+        /// </summary>
         private bool CanStop() => _isPlaying || _isPaused;
 
+        /// <summary>
+        /// On double clicking the video, this method sets the selected video and starts playback.
+        /// </summary>
+        /// <param name="videoFile"></param>
         private void OnVideoDoubleClick(VideoFile videoFile)
         {
             SelectedVideo = videoFile;
             Play();
         }
 
+        /// <summary>
+        /// Notifies play, pause and stop commands about potential changes in their execution state.
+        /// </summary>
         private void UpdateCanExecute()
         {
             ((RelayCommand)PlayCommand).NotifyCanExecuteChanged();
             ((RelayCommand)PauseCommand).NotifyCanExecuteChanged();
             ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
         }
+        #endregion
 
+        #region Private Fields
         private bool _isPlaying;
         private bool _isPaused;
         private bool _isStopped;
         private VideoFile _selectedVideo;
         private MediaElement _mediaElement;
         private double seekBarMaximum;
-
-        public ObservableCollection<FolderViewModel> Folders { get; } = new ObservableCollection<FolderViewModel>();
-        public ICommand LoadVideosCommand { get; }
-        public ICommand PlayCommand { get; }
-        public ICommand PauseCommand { get; }
-        public ICommand StopCommand { get; }
-        public ICommand VideoDoubleClickCommand { get; }
+        #endregion
 
     }
 }
