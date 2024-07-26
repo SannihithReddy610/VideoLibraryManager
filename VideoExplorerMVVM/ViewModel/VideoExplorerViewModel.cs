@@ -135,7 +135,7 @@ namespace VideoExplorerMVVM.ViewModel
                     {
                         if (!string.IsNullOrEmpty(file) && videoExtensions.Contains(Path.GetExtension(file).ToLower()))
                         {
-                            videoFiles.Add(new VideoFile
+                            videoFiles.Add(new VideoFile(file)
                             {
                                 FilePath = file,
                                 FileName = Path.GetFileName(file),

@@ -29,6 +29,33 @@
                                 <TextBlock.InputBindings>
                                     <MouseBinding Gesture="LeftDoubleClick" Command="{Binding DataContext.VideoDoubleClickCommand, RelativeSource={RelativeSource AncestorType=TreeView}}" CommandParameter="{Binding}" />
                                 </TextBlock.InputBindings>
+                                <TextBlock.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel>
+                                            <TextBlock>
+                                                <Run Text="Path: "/>
+                                                <Run Text="{Binding FilePath}"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="Type: "/>
+                                                <Run Text="{Binding FileType}"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="Size: "/>
+                                                <Run Text="{Binding FileSize, StringFormat=N0}"/>
+                                                <Run Text="MB"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="Duration: "/>
+                                                <Run Text="{Binding Duration, StringFormat=hh\\:mm\\:ss}"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="Date Modified: "/>
+                                                <Run Text="{Binding DateModified, StringFormat=yyyy-MM-dd HH:mm:ss}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </TextBlock.ToolTip>
                             </TextBlock>
                         </DataTemplate>
                     </HierarchicalDataTemplate.ItemTemplate>
