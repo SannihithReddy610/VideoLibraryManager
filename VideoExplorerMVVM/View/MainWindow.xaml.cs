@@ -163,13 +163,11 @@ namespace VideoExplorerMVVM
         /// <param name="e"></param>
         private void Timer_Tick(object sender, EventArgs e)
         {
-            if (mediaElement != null && mediaElement.NaturalDuration.HasTimeSpan)
+            var viewModel = DataContext as VideoExplorerViewModel;
+            if (viewModel != null && mediaElement.Source != null && mediaElement.NaturalDuration.HasTimeSpan)
             {
-                // Ensure this update is performed on the UI thread
-                Dispatcher.Invoke(() =>
-                {
-                    seekBar.Value = mediaElement.Position.TotalSeconds;
-                });
+                viewModel.SeekBarValue = mediaElement.Position.TotalSeconds;
+                viewModel.VideoDuration = mediaElement.Position.ToString(@"hh\:mm\:ss") + " / " + mediaElement.NaturalDuration.TimeSpan.ToString(@"hh\:mm\:ss");
             }
         }
         #endregion

@@ -48,10 +48,30 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
-        public double SeekBarMaximum
+        public double SeekBarValue
         {
-            get => seekBarMaximum;
-            set => SetProperty(ref seekBarMaximum, value);
+            get => _seekBarValue;
+            set
+            {
+                if (_seekBarValue != value)
+                {
+                    _seekBarValue = value;
+                    OnPropertyChanged(nameof(SeekBarValue));
+                }
+            }
+        }
+
+        public string VideoDuration
+        {
+            get => _videoDuration;
+            set
+            {
+                if (_videoDuration != value)
+                {
+                    _videoDuration = value;
+                    OnPropertyChanged(nameof(VideoDuration));
+                }
+            }
         }
 
         public ObservableCollection<FolderViewModel> Folders { get; } = new ObservableCollection<FolderViewModel>();
@@ -267,7 +287,8 @@ namespace VideoExplorerMVVM.ViewModel
         private bool _isStopped;
         private VideoFile _selectedVideo;
         private MediaElement _mediaElement;
-        private double seekBarMaximum;
+        private double _seekBarValue;
+        private string _videoDuration;
         #endregion
 
     }
