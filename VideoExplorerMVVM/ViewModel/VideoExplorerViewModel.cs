@@ -25,6 +25,7 @@ namespace VideoExplorerMVVM.ViewModel
             DeleteCommand = new RelayCommand(DeleteVideo, CanDelete);
             VideoDoubleClickCommand = new RelayCommand<VideoFile>(PlayVideoOnDoubleClick);
             Folders = new ObservableCollection<FolderViewModel>();
+            FilteredFolders = new ObservableCollection<FolderViewModel>();
         }
         #endregion
 
@@ -105,6 +106,30 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (_searchText != value)
+                {
+                    _searchText = value;
+                    OnPropertyChanged(nameof(SearchText));
+                    _= FilterVideosAsync();
+                }
+            }
+        }
+
+        public ObservableCollection<FolderViewModel> FilteredFolders
+        {
+            get => _filteredFolders;
+            set
+            {
+                _filteredFolders = value;
+                OnPropertyChanged(nameof(FilteredFolders));
+            }
+        }
+
         public ObservableCollection<FolderViewModel> Folders { get; set; }
         public IAsyncRelayCommand LoadVideosCommand { get; set; }
         public IAsyncRelayCommand SyncVideosCommand { get; set; }
@@ -115,7 +140,9 @@ namespace VideoExplorerMVVM.ViewModel
         public ICommand DeleteCommand { get; }
         public ICommand VideoDoubleClickCommand { get; }
         #endregion
+        
 
+        
         #region Private Methods
         /// <summary>
         /// Loads video files asynchronously from specified directories, groups them by folder, 
@@ -142,6 +169,7 @@ namespace VideoExplorerMVVM.ViewModel
                         }
                         Folders.Add(folderViewModel);
                     }
+                    _ = FilterVideosAsync();
                 });
             }
             catch (Exception ex)
@@ -244,7 +272,7 @@ namespace VideoExplorerMVVM.ViewModel
             try
             {
                 Folders.Clear();
-                await LoadVideosAsync();
+                _ = LoadVideosAsync();
             }
             catch (Exception ex)
             {
@@ -447,6 +475,55 @@ namespace VideoExplorerMVVM.ViewModel
         }
         #endregion
 
+        /// <summary>
+        /// Asynchronously filters the video list based on the search text.
+        /// If the search text is empty or whitespace, all videos are shown.
+        /// Otherwise, videos whose filenames contain the search text are displayed.
+        /// </summary>
+        /// <returns>A Task representing the asynchronous operation.</returns>
+        private async Task FilterVideosAsync()
+        {
+            var searchText = _searchText?.ToLower().Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // Show all videos if search text is empty
+                FilteredFolders = new ObservableCollection<FolderViewModel>(Folders);
+                return;
+            }
+
+            // Perform the filtering in a background task
+            var filteredFolders = await Task.Run(() =>
+            {
+                var result = new List<FolderViewModel>();
+
+                foreach (var folder in Folders)
+                {
+                    var filteredVideos = folder.Videos
+                        .Where(v => v.FileName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .ToList();
+
+                    if (filteredVideos.Count > 0)
+                    {
+                        var filteredFolder = new FolderViewModel(folder.FolderPath);
+                        foreach (var video in filteredVideos)
+                        {
+                            filteredFolder.Videos.Add(video);
+                        }
+                        result.Add(filteredFolder);
+                    }
+                }
+
+                return result;
+            });
+
+            // Update the FilteredFolders collection on the UI thread
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                FilteredFolders = new ObservableCollection<FolderViewModel>(filteredFolders);
+            });
+        }
+
         #region Private Fields
         private bool _isPlaying;
         private bool _isPaused;
@@ -455,8 +532,10 @@ namespace VideoExplorerMVVM.ViewModel
         private string _videoDuration;
         private string _fileName;
         private string _statusMessage;
+        private string _searchText;
         private VideoFile _selectedVideo;
         private MediaElement _mediaElement;
+        private ObservableCollection<FolderViewModel> _filteredFolders;
         private static readonly List<string> RootPaths = new List<string> { "C:\\Users", "D:\\", "G:\\" };
         private static readonly HashSet<string> VideoExtensions = new HashSet<string> { ".mp4", ".avi", ".mkv" };
         #endregion

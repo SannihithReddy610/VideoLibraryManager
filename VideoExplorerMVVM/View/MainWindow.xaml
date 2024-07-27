@@ -29,12 +29,17 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <TextBlock Text="Video Library" 
-               FontSize="18" 
+               FontSize="36" 
                FontWeight="Bold" 
                FontStyle="Italic" 
                Foreground="Teal" 
-               Margin="100,0,0,10"/>
-            <TreeView ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged" Margin="0,31,0,0" Grid.RowSpan="2">
+               Margin="25,6,15,790"/>
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                     Margin="102,60,10,741" />
+            <TreeView ItemsSource="{Binding FilteredFolders}" 
+                      SelectedItemChanged="TreeView_SelectedItemChanged" 
+                      Margin="10,88,10,2" 
+                      Grid.RowSpan="3">
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type vm:FolderViewModel}" ItemsSource="{Binding Videos}">
                         <TextBlock Text="{Binding DisplayFolderName}" FontSize="14" FontStyle="Italic"/>
@@ -85,7 +90,8 @@
                 </TreeView.ItemTemplate>
             </TreeView>
             <Button Content="Refresh Videos" Command="{Binding SyncVideosCommand}" Height="24" Width="100" Margin="10,800,10,0"/>
-            <TextBlock Text="{Binding StatusMessage}" Grid.Row="2" Margin="10" FontSize="14" FontStyle="Italic" Foreground="Teal"/>
+            <TextBlock Text="{Binding StatusMessage}" Grid.Row="2" Margin="20,0,10,15" FontSize="14" FontStyle="Italic" Foreground="Teal"/>
+            <Label Content="Search Videos:" HorizontalAlignment="Left" Margin="10,55,0,0" VerticalAlignment="Top"/>
         </Grid>
 
         <StackPanel Grid.Column="2" Grid.ColumnSpan="2">
