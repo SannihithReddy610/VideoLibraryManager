@@ -58,8 +58,14 @@ namespace VideoExplorerMVVM
             Loaded += MainWindow_Loaded;
             mediaElement.MediaOpened += MediaElement_MediaOpened;
             mediaElement.MediaEnded += MediaElement_MediaEnded;
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
 
+        /// <summary>
+        /// Handles the events when the main window is loaded.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the main window.</param>
+        /// <param name="e">The event data associated with the loaded event.</param>
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is VideoExplorerViewModel viewModel)
@@ -110,23 +116,16 @@ namespace VideoExplorerMVVM
         /// <param name="e">The event arguments containing the name of the changed property.</param>
         private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(VideoExplorerViewModel.SelectedVideo))
+            if (e.PropertyName == nameof(VideoExplorerViewModel.IsFullScreen))
             {
-                PlayVideo(_viewModel.SelectedVideo);
-            }
-        }
-
-        /// <summary>
-        /// Starts playback of the specified video and updates the media element's source.
-        /// </summary>
-        /// <param name="video">The video file to play.</param>
-        private void PlayVideo(VideoFile video)
-        {
-            if (video != null)
-            {
-                mediaElement.Source = new Uri(video.FilePath);
-                mediaElement.Play();
-                _timer.Start();
+                if ((sender as VideoExplorerViewModel).IsFullScreen)
+                {
+                    EnterFullScreen();
+                }
+                else
+                {
+                    ExitFullScreen();
+                }
             }
         }
 
@@ -243,11 +242,65 @@ namespace VideoExplorerMVVM
         {
             command.Execute(parameter);
         }
+
+        /// <summary>
+        /// Enters full-screen mode, storing the current window state, style, and resize mode.
+        /// </summary>
+        private void EnterFullScreen()
+        {
+            previousWindowState = this.WindowState;
+            previousWindowStyle = this.WindowStyle;
+            previousResizeMode = this.ResizeMode;
+
+            this.WindowState = WindowState.Maximized;
+            this.WindowStyle = WindowStyle.None;
+            this.ResizeMode = ResizeMode.NoResize;
+
+            mediaElement.Width = SystemParameters.PrimaryScreenWidth;
+            mediaElement.Height = SystemParameters.PrimaryScreenHeight;
+            _isFullScreen = true;
+
+            this.KeyDown += FullScreen_KeyDown;
+        }
+
+        /// <summary>
+        /// Exits full-screen mode, restoring the previous window state, style, and resize mode.
+        /// </summary>
+        private void ExitFullScreen()
+        {
+            this.WindowState = previousWindowState;
+            this.WindowStyle = previousWindowStyle;
+            this.ResizeMode = previousResizeMode;
+
+            mediaElement.Width = double.NaN; // Reset to Auto
+            mediaElement.Height = double.NaN; // Reset to Auto
+            _isFullScreen = false;
+
+            this.KeyDown -= FullScreen_KeyDown;
+        }
+
+        /// <summary>
+        /// Handles the keydown event to exit full-screen mode when the Escape key is pressed.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The key event arguments.</param>
+        private void FullScreen_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape && _isFullScreen)
+            {
+                var viewModel = DataContext as VideoExplorerViewModel;
+                viewModel.IsFullScreen = false;
+            }
+        }
         #endregion
 
         #region Private Fields
         private DispatcherTimer _timer;
         private VideoExplorerViewModel _viewModel;
+        private bool _isFullScreen = false;
+        private WindowState previousWindowState;
+        private WindowStyle previousWindowStyle;
+        private ResizeMode previousResizeMode;
         #endregion
 
     }

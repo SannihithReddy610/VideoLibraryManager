@@ -24,6 +24,7 @@ namespace VideoExplorerMVVM.ViewModel
             RenameCommand = new RelayCommand(RenameVideo, CanRename);
             DeleteCommand = new RelayCommand(DeleteVideo, CanDelete);
             VideoDoubleClickCommand = new RelayCommand<VideoFile>(PlayVideoOnDoubleClick);
+            ToggleFullScreenCommand = new RelayCommand(ToggleFullScreen);
             Folders = new ObservableCollection<FolderViewModel>();
             FilteredFolders = new ObservableCollection<FolderViewModel>();
         }
@@ -42,6 +43,7 @@ namespace VideoExplorerMVVM.ViewModel
                 }
             }
         }
+
         public VideoFile SelectedVideo
         {
             get => _selectedVideo;
@@ -120,6 +122,20 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
+        public bool IsFullScreen
+        {
+            get => _isFullScreen;
+            set
+            {
+                if (_isFullScreen != value)
+                {
+                    _isFullScreen = value;
+                    OnPropertyChanged(nameof(IsFullScreen));
+                    OnPropertyChanged(nameof(FolderListVisibility));                  
+                }
+            }
+        }
+
         public ObservableCollection<FolderViewModel> FilteredFolders
         {
             get => _filteredFolders;
@@ -131,16 +147,28 @@ namespace VideoExplorerMVVM.ViewModel
         }
 
         public ObservableCollection<FolderViewModel> Folders { get; set; }
+
         public IAsyncRelayCommand LoadVideosCommand { get; set; }
+
         public IAsyncRelayCommand SyncVideosCommand { get; set; }
+
         public ICommand PlayCommand { get; }
+
         public ICommand PauseCommand { get; }
+
         public ICommand StopCommand { get; }
+
         public ICommand RenameCommand { get; }
+
         public ICommand DeleteCommand { get; }
+
         public ICommand VideoDoubleClickCommand { get; }
+
+        public ICommand ToggleFullScreenCommand { get; }
+
+        public Visibility FolderListVisibility => IsFullScreen ? Visibility.Collapsed : Visibility.Visible;
         #endregion
-         
+
         #region Private Methods
         /// <summary>
         /// Loads video files asynchronously from specified directories, groups them by folder, 
@@ -266,7 +294,6 @@ namespace VideoExplorerMVVM.ViewModel
         /// </summary>
         private async Task SyncVideosAsync()
         {
-            StatusMessage = "Syncing videos, please wait...";
             try
             {
                 Folders.Clear();
@@ -278,7 +305,7 @@ namespace VideoExplorerMVVM.ViewModel
             }
             finally
             {
-                StatusMessage = "Videos synced successfully.";
+                StatusMessage = "Syncing videos, please wait...";
             }
         }
 
@@ -475,11 +502,19 @@ namespace VideoExplorerMVVM.ViewModel
         }
 
         /// <summary>
+        /// Toggles the full-screen mode of the application.
+        /// </summary>
+        private void ToggleFullScreen()
+        {
+            IsFullScreen = !IsFullScreen;
+        }
+
+        /// <summary>
         /// Determines if the Play command can execute.
         /// </summary>
         private bool CanPlay() => !_isPlaying;
 
-        // <summary>
+        /// <summary>
         /// Determines if the Pause command can execute.
         /// </summary>
         private bool CanPause() => _isPlaying;
@@ -526,6 +561,7 @@ namespace VideoExplorerMVVM.ViewModel
         private bool _isPlaying;
         private bool _isPaused;
         private bool _isStopped;
+        private bool _isFullScreen;
         private double _seekBarValue;
         private string _videoDuration;
         private string _fileName;
@@ -534,8 +570,8 @@ namespace VideoExplorerMVVM.ViewModel
         private VideoFile _selectedVideo;
         private MediaElement _mediaElement;
         private ObservableCollection<FolderViewModel> _filteredFolders;
-        private static readonly List<string> RootPaths = new List<string> { "C:\\Users", "D:\\", "G:\\" };
-        private static readonly HashSet<string> VideoExtensions = new HashSet<string> { ".mp4", ".avi", ".mkv" };
+        private static readonly List<string> RootPaths = ["C:\\Users", "D:\\", "G:\\"];
+        private static readonly HashSet<string> VideoExtensions = [".mp4", ".avi", ".mkv"];
         #endregion
 
     }

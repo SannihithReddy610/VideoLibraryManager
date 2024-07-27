@@ -16,13 +16,12 @@
     </Window.DataContext>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="245.077"/>
-            <ColumnDefinition Width="54.923"/>
-            <ColumnDefinition Width="9*"/>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
 
         </Grid.ColumnDefinitions>
 
-        <Grid Grid.Column="0" Grid.ColumnSpan="2">
+        <Grid Grid.Column="0" Visibility="{Binding FolderListVisibility}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -102,6 +101,7 @@
                 <Button Content="Stop" Command="{Binding StopCommand}" Height="24" Width="100" Margin="0,30,0,0"/>
                 <TextBlock Text="Volume:" VerticalAlignment="Center" Margin="20,30,0,0" Width="50"/>
                 <Slider x:Name="volumeSlider" Margin="0,33,0,0" Minimum="0" Maximum="1" Value="0.5" Width="108" ValueChanged="VolumeSlider_ValueChanged"/>
+                <Button Content="Full Screen" Command="{Binding ToggleFullScreenCommand}" Height="24" Width="100" Margin="10,30,0,0"/>
             </StackPanel>
             <Slider Name="seekBar" Margin="0,40,0,0" Minimum="0" Value="{Binding SeekBarValue}" ValueChanged="SeekBar_ValueChanged" />
             <TextBlock Text="{Binding VideoDuration}" VerticalAlignment="Center" Margin="10,0,0,0"/>
