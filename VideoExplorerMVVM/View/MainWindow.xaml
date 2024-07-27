@@ -89,22 +89,23 @@
                 </TreeView.ItemTemplate>
             </TreeView>
             <Button Content="Refresh Videos" Command="{Binding SyncVideosCommand}" Height="24" Width="100" Margin="10,800,10,0"/>
-            <TextBlock Text="{Binding StatusMessage}" Grid.Row="2" Margin="20,0,10,15" FontSize="14" FontStyle="Italic" Foreground="Teal"/>
+            <TextBlock Text="{Binding StatusMessage}" Margin="56,840,37,19" FontSize="14" FontStyle="Italic" Foreground="Teal" Grid.RowSpan="2"/>
             <Label Content="Search Videos:" HorizontalAlignment="Left" Margin="10,55,0,0" VerticalAlignment="Top"/>
         </Grid>
 
         <StackPanel Grid.Column="2" Grid.ColumnSpan="2">
             <MediaElement Name="mediaElement" LoadedBehavior="Manual" MediaOpened="MediaElement_MediaOpened" MediaEnded="MediaElement_MediaEnded" Margin="10,30,10,0"/>
+            <TextBlock Text="{Binding SelectedVideo.FileName}" VerticalAlignment="Bottom"  HorizontalAlignment="Center" Margin="10" FontSize="16"/>
             <StackPanel Orientation="Horizontal">
-                <Button Content="Play" Command="{Binding PlayCommand}" Height="24" Width="100" Margin="10,30,10,0"/>
-                <Button Content="Pause" Command="{Binding PauseCommand}" Height="24" Width="100" Margin="0,30,10,0"/>
-                <Button Content="Stop" Command="{Binding StopCommand}" Height="24" Width="100" Margin="0,30,0,0"/>
-                <TextBlock Text="Volume:" VerticalAlignment="Center" Margin="20,30,0,0" Width="50"/>
-                <Slider x:Name="volumeSlider" Margin="0,33,0,0" Minimum="0" Maximum="1" Value="0.5" Width="108" ValueChanged="VolumeSlider_ValueChanged"/>
-                <Button Content="Full Screen" Command="{Binding ToggleFullScreenCommand}" Height="24" Width="100" Margin="10,30,0,0"/>
+                <Button Content="Play" Command="{Binding PlayCommand}" Height="24" Width="100" Margin="10,10,10,0"/>
+                <Button Content="Pause" Command="{Binding PauseCommand}" Height="24" Width="100" Margin="0,10,10,0"/>
+                <Button Content="Stop" Command="{Binding StopCommand}" Height="24" Width="100" Margin="0,10,0,0"/>
+                <Button Content="Full Screen" Command="{Binding ToggleFullScreenCommand}" Height="24" Width="100" Margin="10,10,0,0"/>
+                <TextBlock Text="Volume:" VerticalAlignment="Center" Margin="20,10,0,0" Width="50"/>
+                <Slider x:Name="volumeSlider" Margin="0,13,0,0" Minimum="0" Maximum="1" Value="0.5" Width="108" ValueChanged="VolumeSlider_ValueChanged"/>
             </StackPanel>
-            <Slider Name="seekBar" Margin="0,40,0,0" Minimum="0" Value="{Binding SeekBarValue}" ValueChanged="SeekBar_ValueChanged" />
-            <TextBlock Text="{Binding VideoDuration}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <Slider x:Name="seekBar" Minimum="0" Value="{Binding SeekBarValue}" ValueChanged="SeekBar_ValueChanged" Margin="0,13,0,0" />
+            <TextBlock Text="{Binding VideoDuration}" Margin="0,5,0,0"/>
         </StackPanel>
     </Grid>
 </Window>
