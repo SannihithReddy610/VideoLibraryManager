@@ -7,7 +7,10 @@
         xmlns:vm="clr-namespace:VideoExplorerMVVM.ViewModel"
         xmlns:m="clr-namespace:VideoExplorerMVVM.Model"
         mc:Ignorable="d"
-        Title="Video Explorer" Height="1080" Width="1920">
+        Title="Video Explorer"
+        WindowStyle="SingleBorderWindow"
+        WindowState="Maximized"
+        ResizeMode="CanResizeWithGrip">
     <Window.DataContext>
         <vm:VideoExplorerViewModel/>
     </Window.DataContext>
@@ -16,63 +19,85 @@
             <ColumnDefinition Width="245.077"/>
             <ColumnDefinition Width="54.923"/>
             <ColumnDefinition Width="9*"/>
-            <ColumnDefinition Width="91*"/>
+
         </Grid.ColumnDefinitions>
 
-        <TreeView Grid.Column="0" ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged" Grid.ColumnSpan="2">
-            <TreeView.ItemTemplate>
-                <HierarchicalDataTemplate DataType="{x:Type vm:FolderViewModel}" ItemsSource="{Binding Videos}">
-                    <TextBlock Text="{Binding DisplayFolderName}"/>
-                    <HierarchicalDataTemplate.ItemTemplate>
-                        <DataTemplate DataType="{x:Type m:VideoFile}">
-                            <TextBlock Text="{Binding FileName}">
-                                <TextBlock.InputBindings>
-                                    <MouseBinding Gesture="LeftDoubleClick" Command="{Binding DataContext.VideoDoubleClickCommand, RelativeSource={RelativeSource AncestorType=TreeView}}" CommandParameter="{Binding}" />
-                                </TextBlock.InputBindings>
-                                <TextBlock.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel>
-                                            <TextBlock>
-                                                <Run Text="Path: "/>
-                                                <Run Text="{Binding FilePath}"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="Type: "/>
-                                                <Run Text="{Binding FileType}"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="Size: "/>
-                                                <Run Text="{Binding FileSize, StringFormat=N0}"/>
-                                                <Run Text="MB"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="Duration: "/>
-                                                <Run Text="{Binding Duration, StringFormat=hh\\:mm\\:ss}"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="Date Modified: "/>
-                                                <Run Text="{Binding DateModified, StringFormat=yyyy-MM-dd HH:mm:ss}"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </TextBlock.ToolTip>
-                            </TextBlock>
-                        </DataTemplate>
-                    </HierarchicalDataTemplate.ItemTemplate>
-                </HierarchicalDataTemplate>
-            </TreeView.ItemTemplate>
-        </TreeView>
+        <Grid Grid.Column="0" Grid.ColumnSpan="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Text="Video Library" 
+               FontSize="18" 
+               FontWeight="Bold" 
+               FontStyle="Italic" 
+               Foreground="Teal" 
+               Margin="100,0,0,10"/>
+            <TreeView ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged" Margin="0,31,0,0" Grid.RowSpan="2">
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate DataType="{x:Type vm:FolderViewModel}" ItemsSource="{Binding Videos}">
+                        <TextBlock Text="{Binding DisplayFolderName}" FontSize="14" FontStyle="Italic"/>
+                        <HierarchicalDataTemplate.ItemTemplate>
+                            <DataTemplate DataType="{x:Type m:VideoFile}">
+                                <TextBlock Text="{Binding FileName}" FontSize="12">
+                                    <TextBlock.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Play" Click="PlayMenuItem_Click"/>
+                                            <MenuItem Header="Rename" Click="RenameMenuItem_Click"/>
+                                            <MenuItem Header="Delete" Click="DeleteMenuItem_Click"/>
+                                        </ContextMenu>
+                                    </TextBlock.ContextMenu>
+                                    <TextBlock.InputBindings>
+                                        <MouseBinding Gesture="LeftDoubleClick" Command="{Binding DataContext.VideoDoubleClickCommand, RelativeSource={RelativeSource AncestorType=TreeView}}" CommandParameter="{Binding}" />
+                                    </TextBlock.InputBindings>
+                                    <TextBlock.ToolTip>
+                                        <ToolTip>
+                                            <StackPanel>
+                                                <TextBlock>
+                                                    <Run Text="Path: "/>
+                                                    <Run Text="{Binding FilePath}"/>
+                                                </TextBlock>
+                                                <TextBlock>
+                                                    <Run Text="Type: "/>
+                                                    <Run Text="{Binding FileType}"/>
+                                                </TextBlock>
+                                                <TextBlock>
+                                                    <Run Text="Size: "/>
+                                                    <Run Text="{Binding FileSize, StringFormat=N0}"/>
+                                                    <Run Text="MB"/>
+                                                </TextBlock>
+                                                <TextBlock>
+                                                    <Run Text="Duration: "/>
+                                                    <Run Text="{Binding Duration, StringFormat=hh\\:mm\\:ss}"/>
+                                                </TextBlock>
+                                                <TextBlock>
+                                                    <Run Text="Date Modified: "/>
+                                                    <Run Text="{Binding DateModified, StringFormat=dd-MM-yyyy HH:mm:ss}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </TextBlock.ToolTip>
+                                </TextBlock>
+                            </DataTemplate>
+                        </HierarchicalDataTemplate.ItemTemplate>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+            <Button Content="Refresh Videos" Command="{Binding SyncVideosCommand}" Height="24" Width="100" Margin="10,800,10,0"/>
+            <TextBlock Text="{Binding StatusMessage}" Grid.Row="2" Margin="10" FontSize="14" FontStyle="Italic" Foreground="Teal"/>
+        </Grid>
 
         <StackPanel Grid.Column="2" Grid.ColumnSpan="2">
-            <MediaElement Name="mediaElement" LoadedBehavior="Manual" MediaOpened="MediaElement_MediaOpened" MediaEnded="MediaElement_MediaEnded"/>
+            <MediaElement Name="mediaElement" LoadedBehavior="Manual" MediaOpened="MediaElement_MediaOpened" MediaEnded="MediaElement_MediaEnded" Margin="10,30,10,0"/>
             <StackPanel Orientation="Horizontal">
-                <Button Content="Play" Command="{Binding PlayCommand}" Height="24" Width="100" Margin="10,10,10,0"/>
-                <Button Content="Pause" Command="{Binding PauseCommand}" Height="24" Width="100" Margin="0,10,10,0"/>
-                <Button Content="Stop" Command="{Binding StopCommand}" Height="24" Width="100" Margin="0,10,0,0"/>
-                <TextBlock Text="Volume:" VerticalAlignment="Center" Margin="20,10,0,0" Width="50"/>
-                <Slider x:Name="volumeSlider" Margin="0,15,0,0" Minimum="0" Maximum="1" Value="0.5" Width="108" ValueChanged="VolumeSlider_ValueChanged"/>
+                <Button Content="Play" Command="{Binding PlayCommand}" Height="24" Width="100" Margin="10,30,10,0"/>
+                <Button Content="Pause" Command="{Binding PauseCommand}" Height="24" Width="100" Margin="0,30,10,0"/>
+                <Button Content="Stop" Command="{Binding StopCommand}" Height="24" Width="100" Margin="0,30,0,0"/>
+                <TextBlock Text="Volume:" VerticalAlignment="Center" Margin="20,30,0,0" Width="50"/>
+                <Slider x:Name="volumeSlider" Margin="0,33,0,0" Minimum="0" Maximum="1" Value="0.5" Width="108" ValueChanged="VolumeSlider_ValueChanged"/>
             </StackPanel>
-            <Slider Name="seekBar" Margin="0,15,0,0" Minimum="0" Value="{Binding SeekBarValue}" ValueChanged="SeekBar_ValueChanged" />
+            <Slider Name="seekBar" Margin="0,40,0,0" Minimum="0" Value="{Binding SeekBarValue}" ValueChanged="SeekBar_ValueChanged" />
             <TextBlock Text="{Binding VideoDuration}" VerticalAlignment="Center" Margin="10,0,0,0"/>
         </StackPanel>
     </Grid>

@@ -1,7 +1,9 @@
 ﻿#region Directives
 using CommunityToolkit.Mvvm.Input;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using VideoExplorerMVVM.Model;
@@ -14,16 +16,31 @@ namespace VideoExplorerMVVM.ViewModel
         #region Constructor
         public VideoExplorerViewModel()
         {
-            LoadVideosCommand = new RelayCommand(LoadVideos);
-            PlayCommand = new RelayCommand(Play, CanPlay);
+            LoadVideosCommand = new AsyncRelayCommand(LoadVideosAsync);
+            SyncVideosCommand = new AsyncRelayCommand(SyncVideosAsync);
+            PlayCommand = new RelayCommand(PlayVideo, CanPlay);
             PauseCommand = new RelayCommand(Pause, CanPause);
             StopCommand = new RelayCommand(Stop, CanStop);
-            VideoDoubleClickCommand = new RelayCommand<VideoFile>(OnVideoDoubleClick);
-            LoadVideos();
+            RenameCommand = new RelayCommand(RenameVideo, CanRename);
+            DeleteCommand = new RelayCommand(DeleteVideo, CanDelete);
+            VideoDoubleClickCommand = new RelayCommand<VideoFile>(PlayVideoOnDoubleClick);
+            Folders = new ObservableCollection<FolderViewModel>();
         }
         #endregion
 
         #region Properties
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set
+            {
+                if (_statusMessage != value)
+                {
+                    _statusMessage = value;
+                    OnPropertyChanged(nameof(StatusMessage));
+                }
+            }
+        }
         public VideoFile SelectedVideo
         {
             get => _selectedVideo;
@@ -74,110 +91,136 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
-        public ObservableCollection<FolderViewModel> Folders { get; } = new ObservableCollection<FolderViewModel>();
-        public ICommand LoadVideosCommand { get; }
+        public string FileName
+        {
+            get => _fileName;
+            set
+            {
+                if (_fileName != value)
+                {
+                    _fileName = value;
+                    OnPropertyChanged(nameof(FileName));
+                    UpdateCanExecute();
+                }
+            }
+        }
+
+        public ObservableCollection<FolderViewModel> Folders { get; set; }
+        public IAsyncRelayCommand LoadVideosCommand { get; set; }
+        public IAsyncRelayCommand SyncVideosCommand { get; set; }
         public ICommand PlayCommand { get; }
         public ICommand PauseCommand { get; }
         public ICommand StopCommand { get; }
+        public ICommand RenameCommand { get; }
+        public ICommand DeleteCommand { get; }
         public ICommand VideoDoubleClickCommand { get; }
         #endregion
 
         #region Private Methods
         /// <summary>
-        /// The LoadVideos method clears the existing folder list, retrieves video files 
-        /// from specified directories, groups them by folder, 
-        /// and updates the Folders collection with FolderViewModel instances for each group.
+        /// Loads video files asynchronously from specified directories, groups them by folder, 
+        /// and updates the Folders collection.
         /// </summary>
-        private void LoadVideos()
+        private async Task LoadVideosAsync()
         {
-            Folders.Clear();
-            var videoFiles = GetVideoFiles(["C:\\Users", "D:\\", "G:\\"]);
-
-            var groupedVideos = videoFiles.GroupBy(v => v.FolderPath);
-
-            foreach (var group in groupedVideos)
+            StatusMessage = "Loading videos...";
+            try
             {
-                var folderViewModel = new FolderViewModel(group.Key);
-                foreach (var video in group)
+                var videoFiles = await GetVideoFilesAsync(RootPaths).ConfigureAwait(false);
+
+                Application.Current.Dispatcher.Invoke(() =>
                 {
-                    folderViewModel.Videos.Add(video);
-                }
-                Folders.Add(folderViewModel);
+                    Folders.Clear();
+                    var groupedVideos = videoFiles.GroupBy(v => v.FolderPath);
+
+                    foreach (var group in groupedVideos)
+                    {
+                        var folderViewModel = new FolderViewModel(group.Key);
+                        foreach (var video in group)
+                        {
+                            folderViewModel.Videos.Add(video);
+                        }
+                        Folders.Add(folderViewModel);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"An error occurred while loading videos: {ex.Message}";
+                // Log the exception or handle it as needed
+                Console.WriteLine($"An error occurred while loading videos: {ex.Message}");
+            }
+            finally
+            {
+                StatusMessage = "Videos loaded successfully.";
             }
         }
 
         /// <summary>
-        /// The GetVideoFiles method retrieves video files from a list of root paths, 
-        /// filtering by specific file extensions
+        /// Retrieves video files asynchronously from a list of root paths, filtering by specific file extensions.
         /// </summary>
-        /// <param name="rootPaths"></param>
-        /// <returns></returns>
-        private IEnumerable<VideoFile> GetVideoFiles(List<string> rootPaths)
+        /// <param name="rootPaths">The list of root paths to search for video files.</param>
+        /// <returns>An enumerable collection of video files.</returns>
+        private async Task<IEnumerable<VideoFile>> GetVideoFilesAsync(List<string> rootPaths)
         {
-            var videoFiles = new List<VideoFile>();
-            foreach (var rootPath in rootPaths)
+            var videoFiles = new ConcurrentBag<VideoFile>();
+
+            var tasks = rootPaths.Select(async rootPath =>
             {
-                if (!Directory.Exists(rootPath))
+                if (Directory.Exists(rootPath))
                 {
-                    Console.WriteLine($"The root path '{rootPath}' does not exist.");
-                    return videoFiles;
-                }
+                    var allFiles = new List<string>();
+                    await Task.Run(() => GetFiles(rootPath, allFiles));
 
-                // Define video file extensions
-                HashSet<string> videoExtensions = new HashSet<string> { ".mp4", ".avi", ".mkv" };
-
-                List<string> allFiles = new List<string>();
-                GetFiles(rootPath, allFiles);
-
-                foreach (var file in allFiles)
-                {
-                    try
+                    foreach (var file in allFiles)
                     {
-                        if (!string.IsNullOrEmpty(file) && videoExtensions.Contains(Path.GetExtension(file).ToLower()))
+                        try
                         {
-                            videoFiles.Add(new VideoFile(file)
+                            if (!string.IsNullOrEmpty(file) && VideoExtensions.Contains(Path.GetExtension(file).ToLower()))
                             {
-                                FilePath = file,
-                                FileName = Path.GetFileName(file),
-                                FolderPath = Path.GetDirectoryName(file)
-                            });
+                                videoFiles.Add(new VideoFile(file)
+                                {
+                                    FilePath = file,
+                                    FileName = Path.GetFileName(file),
+                                    FolderPath = Path.GetDirectoryName(file)
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error processing file '{file}': {ex.Message}");
                         }
                     }
-                    catch
-                    {
-                        continue;
-                    }
                 }
-            }
+                else
+                {
+                    Console.WriteLine($"The root path '{rootPath}' does not exist.");
+                }
+            });
+
+            await Task.WhenAll(tasks);
             return videoFiles;
         }
 
         /// <summary>
-        /// GetFiles method recursively collects all file paths within a given directory 
-        /// and its subdirectories into a provided list.
+        /// Recursively collects all file paths within a given directory and its subdirectories into a provided list.
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="files"></param>
+        /// <param name="path">The root directory path to search.</param>
+        /// <param name="files">The list to collect file paths.</param>
         private void GetFiles(string path, List<string> files)
         {
             try
             {
-                string[] fileEntries = null;
-
-                fileEntries = Directory.GetFiles(path);
-
+                var fileEntries = Directory.GetFiles(path);
                 if (fileEntries != null)
                 {
-                    foreach (var file in fileEntries)
+                    lock (files)
                     {
-                        files.Add(file);
+                        files.AddRange(fileEntries);
                     }
                 }
 
-                string[] directoryEntries = null;
-                directoryEntries = Directory.GetDirectories(path);
-
-
+                var directoryEntries = Directory.GetDirectories(path);
                 if (directoryEntries != null)
                 {
                     Parallel.ForEach(directoryEntries, directory =>
@@ -186,14 +229,37 @@ namespace VideoExplorerMVVM.ViewModel
                     });
                 }
             }
-            catch (Exception ex) { }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error accessing path '{path}': {ex.Message}");
+            }
         }
 
         /// <summary>
-        /// Play method plays the selected video in the MediaElement control if present, 
-        /// updates playback state variables.
+        /// Synchronizes the videos by clearing the current folders and reloading the videos.
         /// </summary>
-        private void Play()
+        private async Task SyncVideosAsync()
+        {
+            StatusMessage = "Syncing videos, please wait...";
+            try
+            {
+                Folders.Clear();
+                await LoadVideosAsync();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"An error occurred while syncing videos: {ex.Message}";
+            }
+            finally
+            {
+                StatusMessage = "Videos synced successfully.";
+            }
+        }
+
+        /// <summary>
+        /// Plays the selected video in the MediaElement control if present, updates playback state variables.
+        /// </summary>
+        private void PlayVideo()
         {
             if (MediaElement != null)
             {
@@ -214,8 +280,7 @@ namespace VideoExplorerMVVM.ViewModel
         }
 
         /// <summary>
-        /// Pause method pauses the currently playing video in the MediaElement control 
-        /// and updates playback state variables.
+        /// Pauses the currently playing video in the MediaElement control and updates playback state variables.
         /// </summary>
         private void Pause()
         {
@@ -230,8 +295,7 @@ namespace VideoExplorerMVVM.ViewModel
         }
 
         /// <summary>
-        /// Stop method stops the currently playing video in the MediaElement control 
-        /// and updates playback state variables.
+        /// Stops the currently playing video in the MediaElement control and updates playback state variables.
         /// </summary>
         private void Stop()
         {
@@ -246,38 +310,140 @@ namespace VideoExplorerMVVM.ViewModel
         }
 
         /// <summary>
-        /// Returns true if the media is not currently playing.
+        /// Renames the selected video file.
+        /// </summary>
+        private void RenameVideo()
+        {
+            if (SelectedVideo == null)
+                return;
+
+            try
+            {
+                // Ask the user for a new file name
+                string newFileName = Microsoft.VisualBasic.Interaction.InputBox("Enter the new name for the video:", "Rename Video", SelectedVideo.FileName);
+
+                if (string.IsNullOrWhiteSpace(newFileName) || newFileName == SelectedVideo.FileName)
+                    return;
+
+                string newFilePath = Path.Combine(Path.GetDirectoryName(SelectedVideo.FilePath), newFileName);
+
+                // Check if the new file name already exists
+                if (File.Exists(newFilePath))
+                {
+                    MessageBox.Show("A file with the new name already exists. Please choose a different name.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Rename the file
+                File.Move(SelectedVideo.FilePath, newFilePath);
+
+                // Update the view model
+                SelectedVideo.FilePath = newFilePath;
+                SelectedVideo.FileName = newFileName;
+                OnPropertyChanged(nameof(FileName));
+                var folder = Folders.FirstOrDefault(f => f.Videos.Contains(SelectedVideo));
+                if (folder != null)
+                {
+                    var video = folder.Videos.FirstOrDefault(v => v.FilePath == newFilePath);
+                    if (video != null)
+                    {
+                        video.FileName = newFileName;
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred while renaming the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Deletes the selected video file.
+        /// </summary>
+        private void DeleteVideo()
+        {
+            if (SelectedVideo == null)
+                return;
+
+            try
+            {
+                // Confirm the deletion action with the user
+                MessageBoxResult result = MessageBox.Show($"Are you sure you want to permanently delete '{SelectedVideo.FileName}'?", "Confirm Deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Delete the video file from the file system
+                    if (File.Exists(SelectedVideo.FilePath))
+                    {
+                        File.Delete(SelectedVideo.FilePath);
+                    }
+
+                    // Remove the video file from the view model
+                    var folder = Folders.FirstOrDefault(f => f.Videos.Contains(SelectedVideo));
+                    if (folder != null)
+                    {
+                        folder.Videos.Remove(SelectedVideo);
+                        if (!folder.Videos.Any())
+                        {
+                            Folders.Remove(folder);
+                        }
+                    }
+
+                    // Clear the selected video
+                    SelectedVideo = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred while deleting the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Determines if the Play command can execute.
         /// </summary>
         private bool CanPlay() => !_isPlaying;
 
-        /// <summary>
-        /// Returns true if the media is currently playing.
+        // <summary>
+        /// Determines if the Pause command can execute.
         /// </summary>
         private bool CanPause() => _isPlaying;
 
         /// <summary>
-        /// Returns true if the media is either playing or paused.
+        /// Determines if the Stop command can execute.
         /// </summary>
         private bool CanStop() => _isPlaying || _isPaused;
 
         /// <summary>
-        /// On double clicking the video, this method sets the selected video and starts playback.
+        /// Determines if the Delete command can execute.
         /// </summary>
-        /// <param name="videoFile"></param>
-        private void OnVideoDoubleClick(VideoFile videoFile)
+        private bool CanDelete() => SelectedVideo != null;
+
+        /// <summary>
+        /// Determines if the Rename command can execute.
+        /// </summary>
+        private bool CanRename() => SelectedVideo != null;
+
+        /// <summary>
+        /// Handles double-click on a video to set the selected video and start playback.
+        /// </summary>
+        /// <param name="videoFile">The video file to play.</param>
+        private void PlayVideoOnDoubleClick(VideoFile videoFile)
         {
             SelectedVideo = videoFile;
-            Play();
+            PlayVideo();
         }
 
         /// <summary>
-        /// Notifies play, pause and stop commands about potential changes in their execution state.
+        /// Notifies play, pause, stop, rename, and delete commands about potential changes in their execution state.
         /// </summary>
         private void UpdateCanExecute()
         {
             ((RelayCommand)PlayCommand).NotifyCanExecuteChanged();
             ((RelayCommand)PauseCommand).NotifyCanExecuteChanged();
             ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
+            ((RelayCommand)RenameCommand).NotifyCanExecuteChanged();
+            ((RelayCommand)DeleteCommand).NotifyCanExecuteChanged();
         }
         #endregion
 
@@ -285,10 +451,14 @@ namespace VideoExplorerMVVM.ViewModel
         private bool _isPlaying;
         private bool _isPaused;
         private bool _isStopped;
-        private VideoFile _selectedVideo;
-        private MediaElement _mediaElement;
         private double _seekBarValue;
         private string _videoDuration;
+        private string _fileName;
+        private string _statusMessage;
+        private VideoFile _selectedVideo;
+        private MediaElement _mediaElement;
+        private static readonly List<string> RootPaths = new List<string> { "C:\\Users", "D:\\", "G:\\" };
+        private static readonly HashSet<string> VideoExtensions = new HashSet<string> { ".mp4", ".avi", ".mkv" };
         #endregion
 
     }
