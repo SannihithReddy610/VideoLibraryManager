@@ -140,9 +140,7 @@ namespace VideoExplorerMVVM.ViewModel
         public ICommand DeleteCommand { get; }
         public ICommand VideoDoubleClickCommand { get; }
         #endregion
-        
-
-        
+         
         #region Private Methods
         /// <summary>
         /// Loads video files asynchronously from specified directories, groups them by folder, 
@@ -282,6 +280,55 @@ namespace VideoExplorerMVVM.ViewModel
             {
                 StatusMessage = "Videos synced successfully.";
             }
+        }
+
+        /// <summary>
+        /// Asynchronously filters the video list based on the search text.
+        /// If the search text is empty or whitespace, all videos are shown.
+        /// Otherwise, videos whose filenames contain the search text are displayed.
+        /// </summary>
+        /// <returns>A Task representing the asynchronous operation.</returns>
+        private async Task FilterVideosAsync()
+        {
+            var searchText = _searchText?.ToLower().Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // Show all videos if search text is empty
+                FilteredFolders = new ObservableCollection<FolderViewModel>(Folders);
+                return;
+            }
+
+            // Perform the filtering in a background task
+            var filteredFolders = await Task.Run(() =>
+            {
+                var result = new List<FolderViewModel>();
+
+                foreach (var folder in Folders)
+                {
+                    var filteredVideos = folder.Videos
+                        .Where(v => v.FileName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .ToList();
+
+                    if (filteredVideos.Count > 0)
+                    {
+                        var filteredFolder = new FolderViewModel(folder.FolderPath);
+                        foreach (var video in filteredVideos)
+                        {
+                            filteredFolder.Videos.Add(video);
+                        }
+                        result.Add(filteredFolder);
+                    }
+                }
+
+                return result;
+            });
+
+            // Update the FilteredFolders collection on the UI thread
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                FilteredFolders = new ObservableCollection<FolderViewModel>(filteredFolders);
+            });
         }
 
         /// <summary>
@@ -474,55 +521,6 @@ namespace VideoExplorerMVVM.ViewModel
             ((RelayCommand)DeleteCommand).NotifyCanExecuteChanged();
         }
         #endregion
-
-        /// <summary>
-        /// Asynchronously filters the video list based on the search text.
-        /// If the search text is empty or whitespace, all videos are shown.
-        /// Otherwise, videos whose filenames contain the search text are displayed.
-        /// </summary>
-        /// <returns>A Task representing the asynchronous operation.</returns>
-        private async Task FilterVideosAsync()
-        {
-            var searchText = _searchText?.ToLower().Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(searchText))
-            {
-                // Show all videos if search text is empty
-                FilteredFolders = new ObservableCollection<FolderViewModel>(Folders);
-                return;
-            }
-
-            // Perform the filtering in a background task
-            var filteredFolders = await Task.Run(() =>
-            {
-                var result = new List<FolderViewModel>();
-
-                foreach (var folder in Folders)
-                {
-                    var filteredVideos = folder.Videos
-                        .Where(v => v.FileName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
-                        .ToList();
-
-                    if (filteredVideos.Count > 0)
-                    {
-                        var filteredFolder = new FolderViewModel(folder.FolderPath);
-                        foreach (var video in filteredVideos)
-                        {
-                            filteredFolder.Videos.Add(video);
-                        }
-                        result.Add(filteredFolder);
-                    }
-                }
-
-                return result;
-            });
-
-            // Update the FilteredFolders collection on the UI thread
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                FilteredFolders = new ObservableCollection<FolderViewModel>(filteredFolders);
-            });
-        }
 
         #region Private Fields
         private bool _isPlaying;
