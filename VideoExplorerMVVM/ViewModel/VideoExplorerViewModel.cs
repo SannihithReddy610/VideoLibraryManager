@@ -58,6 +58,16 @@ namespace VideoExplorerMVVM.ViewModel
             }
         }
 
+        public string PlayingVideo
+        {
+            get => _playingVideo;
+            set
+            {
+                _playingVideo = value;
+                OnPropertyChanged(nameof(PlayingVideo));
+            }
+        }
+
         public MediaElement MediaElement
         {
             get => _mediaElement;
@@ -373,6 +383,7 @@ namespace VideoExplorerMVVM.ViewModel
                 {
                     MediaElement.Source = new Uri(SelectedVideo.FilePath);
                     MediaElement.Play();
+                    PlayingVideo = SelectedVideo.FileName;
                 }
                 _isPlaying = true;
                 _isPaused = false;
@@ -567,6 +578,7 @@ namespace VideoExplorerMVVM.ViewModel
         private string _fileName;
         private string _statusMessage;
         private string _searchText;
+        private string _playingVideo;
         private VideoFile _selectedVideo;
         private MediaElement _mediaElement;
         private ObservableCollection<FolderViewModel> _filteredFolders;

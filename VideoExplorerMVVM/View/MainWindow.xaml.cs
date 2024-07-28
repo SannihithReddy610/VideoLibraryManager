@@ -23,7 +23,6 @@ namespace VideoExplorerMVVM
             SetDataContextAndMediaElement();
             InitializeTimer();
             RegisterEventHandlers();
-
         }
         #endregion
 
@@ -180,7 +179,7 @@ namespace VideoExplorerMVVM
         {
             if (mediaElement != null)
             {
-                mediaElement.Volume = volumeSlider.Value;
+                mediaElement.Volume = VolumeSlider.Value;
             }
         }
 
