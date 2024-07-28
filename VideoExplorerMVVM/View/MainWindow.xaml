@@ -22,22 +22,24 @@
 
         <Grid Grid.Column="0" Visibility="{Binding FolderListVisibility}">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto" MaxHeight="100"/>
+                <RowDefinition/>
             </Grid.RowDefinitions>
-            <TextBlock Text="Video Library" 
+            <TextBlock Grid.Row="0" Text="Video Library" 
                FontSize="36" 
                FontWeight="Bold" 
                FontStyle="Italic" 
                Foreground="Teal" 
-               Margin="25,6,15,790"/>
-            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
-                     Margin="102,60,19,763" />
-            <TreeView ItemsSource="{Binding FilteredFolders}" 
+               Margin="15,6,15,26"/>
+            <Label Grid.Row="0" Content="Search Videos:" HorizontalAlignment="Left" Margin="10
+                   ,59,0,0" VerticalAlignment="Top" Width="93" FontWeight="Bold" FontFamily="Comic Sans MS" FontSize="11" Height="25"/>
+            <TextBox Grid.Row="0" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                     Margin="102,60,19,18" />
+            <Label Grid.Row="1" Content="Local Videos (Expand folder to view)" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" FontFamily="Comic Sans MS" FontWeight="Bold" FontSize="11" Height="25" Width="206"/>
+            <TreeView Grid.Row="1" ItemsSource="{Binding FilteredFolders}" 
                       SelectedItemChanged="TreeView_SelectedItemChanged" 
                       ScrollViewer.HorizontalScrollBarVisibility="Auto" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
-                      ScrollViewer.CanContentScroll="True" MaxHeight="300" MaxWidth="230" Margin="-58,111,-48,431" ScrollViewer.VerticalScrollBarVisibility="Auto" >
+                      ScrollViewer.CanContentScroll="True" MaxHeight="250" MaxWidth="230" Margin="10,27,10,515" ScrollViewer.VerticalScrollBarVisibility="Auto" >
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type vm:FolderViewModel}" ItemsSource="{Binding Videos}">
                         <TextBlock Text="{Binding DisplayFolderName}" FontSize="14" FontStyle="Italic"/>
@@ -87,16 +89,22 @@
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
-            <ListBox ItemsSource="{Binding CloudVideos}" Margin="6,467,23,122" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" MaxWidth="225" MaxHeight="255"/>
-            <Button Content="Upload Video" Command="{Binding UploadVideoCommand}" Height="24" Width="100" Margin="13,750,154,70" />
-            <Button Content="Refresh Videos" Command="{Binding SyncVideosCommand}" Height="24" Width="100" Margin="10,800,10,0"/>
-            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="12,840,81,19" FontSize="14" FontStyle="Italic" Foreground="Teal" Grid.RowSpan="2" ScrollViewer.HorizontalScrollBarVisibility="Auto" MaxWidth="210"/>
-            <Label Content="Search Videos:" HorizontalAlignment="Left" Margin="12,59,0,0" VerticalAlignment="Top" Width="100" FontWeight="Bold" FontFamily="Comic Sans MS" FontSize="11"/>
-            <Label Content="Local Videos (Expand folder to view)" HorizontalAlignment="Left" Margin="13,85,0,0" VerticalAlignment="Top" FontFamily="Comic Sans MS" FontWeight="Bold" FontSize="11"/>
-            <Label Content="Cloud Videos (Download to play)" HorizontalAlignment="Left" Margin="13,438,0,0" VerticalAlignment="Top" FontFamily="Comic Sans MS" FontWeight="Bold" FontSize="11"/>
+            <Label Grid.Row="1" Content="Cloud Videos (Download to play)" HorizontalAlignment="Left" Margin="10,294,0,0" VerticalAlignment="Top" FontFamily="Comic Sans MS" FontWeight="Bold" FontSize="11" Height="25" Width="180"/>
+            <TreeView MaxHeight="250" MaxWidth="230" 
+                      ItemsSource="{Binding CloudVideos}" RenderTransformOrigin="0.523,0.54" Margin="0,51,-1,-51" Grid.Row="1">
+                <TreeView.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding FileName}" FontSize="14" FontStyle="Italic"/>
+                    </DataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+            <TextBlock Grid.Row="1"  Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="14,727,6,120" FontSize="14" FontStyle="Italic" Foreground="Teal" ScrollViewer.HorizontalScrollBarVisibility="Auto" MaxWidth="210"/>
+            <Button Content="Refresh Video" Height="24" Width="100" HorizontalAlignment="Left" Margin="70,698,0,0" Grid.Row="1" VerticalAlignment="Top" Command="{Binding SyncVideosCommand}" />
+            <Button Content="Upload Video" Height="24" Width="100" HorizontalAlignment="Left" Margin="15,613,0,0" Grid.Row="1" VerticalAlignment="Top" Command="{Binding UploadVideoCommand}" />
+            <TextBlock Height="52" Width="229" HorizontalAlignment="Left" Margin="15,729,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14" FontStyle="Italic" Foreground="Teal" Text="{Binding StatusMessage}" />
         </Grid>
 
-        <StackPanel Grid.Column="2" Grid.ColumnSpan="2">
+        <StackPanel Grid.Column="1">
             <MediaElement Name="mediaElement" LoadedBehavior="Manual" MediaOpened="MediaElement_MediaOpened" MediaEnded="MediaElement_MediaEnded" Margin="10,30,10,0"/>
             <TextBlock Text="{Binding PlayingVideo}" VerticalAlignment="Bottom"  HorizontalAlignment="Center" Margin="10" FontSize="16"/>
             <StackPanel Orientation="Horizontal">

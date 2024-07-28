@@ -31,7 +31,7 @@ namespace VideoExplorerMVVM.ViewModel
             ToggleFullScreenCommand = new RelayCommand(ToggleFullScreen);
             Folders = new ObservableCollection<FolderViewModel>();
             FilteredFolders = new ObservableCollection<FolderViewModel>();
-            CloudVideos = new ObservableCollection<string>();
+            CloudVideos = new ObservableCollection<CloudVideoFile>();
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", Environment.GetEnvironmentVariable("JFROG_API_KEY"));
         }
@@ -165,7 +165,7 @@ namespace VideoExplorerMVVM.ViewModel
 
         public ObservableCollection<FolderViewModel> Folders { get; set; }
 
-        public ObservableCollection<string> CloudVideos { get; }
+        public ObservableCollection<CloudVideoFile> CloudVideos { get; }
 
         public IAsyncRelayCommand LoadVideosCommand { get; set; }
 
@@ -320,6 +320,7 @@ namespace VideoExplorerMVVM.ViewModel
             try
             {
                 _ = LoadVideosAsync();
+                _ = LoadCloudVideosAsync();
             }
             catch (Exception ex)
             {
@@ -650,19 +651,22 @@ namespace VideoExplorerMVVM.ViewModel
         /// Extracts the file names from the given HTML content.
         /// </summary>
         /// <param name="htmlContent">The HTML content to extract file names from.</param>
-        private string[] ExtractFileNames(string htmlContent)
+        private IEnumerable<CloudVideoFile> ExtractFileNames(string htmlContent)
         {
             var matches = System.Text.RegularExpressions.Regex.Matches(htmlContent, @"href=""([^""]*)""");
-            var fileNames = new List<string>();
+            var cloudFileNames = new List<CloudVideoFile>();
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 var fileName = match.Groups[1].Value;
                 if (!fileName.EndsWith("/"))
                 {
-                    fileNames.Add(fileName);
+                    cloudFileNames.Add(new CloudVideoFile(fileName)
+                    {
+                        FileName = fileName
+                    });
                 }
             }
-            return fileNames.ToArray();
+            return cloudFileNames;
         }
         #endregion
 
