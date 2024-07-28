@@ -3,10 +3,12 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using VideoExplorerMVVM.Model;
+using static System.Windows.MessageBox;
 #endregion
 
 namespace VideoExplorerMVVM.ViewModel
@@ -18,15 +20,20 @@ namespace VideoExplorerMVVM.ViewModel
         {
             LoadVideosCommand = new AsyncRelayCommand(LoadVideosAsync);
             SyncVideosCommand = new AsyncRelayCommand(SyncVideosAsync);
+            LoadCloudVideosCommand = new AsyncRelayCommand(LoadCloudVideosAsync);
             PlayCommand = new RelayCommand(PlayVideo, CanPlay);
             PauseCommand = new RelayCommand(Pause, CanPause);
             StopCommand = new RelayCommand(Stop, CanStop);
             RenameCommand = new RelayCommand(RenameVideo, CanRename);
             DeleteCommand = new RelayCommand(DeleteVideo, CanDelete);
+            UploadVideoCommand = new RelayCommand(UploadVideo);
             VideoDoubleClickCommand = new RelayCommand<VideoFile>(PlayVideoOnDoubleClick);
             ToggleFullScreenCommand = new RelayCommand(ToggleFullScreen);
             Folders = new ObservableCollection<FolderViewModel>();
             FilteredFolders = new ObservableCollection<FolderViewModel>();
+            CloudVideos = new ObservableCollection<string>();
+            _httpClient = new HttpClient();
+            _httpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", apiKey);
         }
         #endregion
 
@@ -158,9 +165,13 @@ namespace VideoExplorerMVVM.ViewModel
 
         public ObservableCollection<FolderViewModel> Folders { get; set; }
 
+        public ObservableCollection<string> CloudVideos { get; }
+
         public IAsyncRelayCommand LoadVideosCommand { get; set; }
 
         public IAsyncRelayCommand SyncVideosCommand { get; set; }
+
+        public IAsyncRelayCommand LoadCloudVideosCommand { get; }
 
         public ICommand PlayCommand { get; }
 
@@ -175,6 +186,8 @@ namespace VideoExplorerMVVM.ViewModel
         public ICommand VideoDoubleClickCommand { get; }
 
         public ICommand ToggleFullScreenCommand { get; }
+
+        public ICommand UploadVideoCommand { get;  }
 
         public Visibility FolderListVisibility => IsFullScreen ? Visibility.Collapsed : Visibility.Visible;
         #endregion
@@ -216,7 +229,7 @@ namespace VideoExplorerMVVM.ViewModel
             }
             finally
             {
-                StatusMessage = "Videos loaded successfully.";
+                StatusMessage = "Local Videos loaded successfully.";
             }
         }
 
@@ -306,7 +319,6 @@ namespace VideoExplorerMVVM.ViewModel
         {
             try
             {
-                Folders.Clear();
                 _ = LoadVideosAsync();
             }
             catch (Exception ex)
@@ -443,7 +455,7 @@ namespace VideoExplorerMVVM.ViewModel
                 // Check if the new file name already exists
                 if (File.Exists(newFilePath))
                 {
-                    MessageBox.Show("A file with the new name already exists. Please choose a different name.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    Show("A file with the new name already exists. Please choose a different name.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
@@ -467,7 +479,7 @@ namespace VideoExplorerMVVM.ViewModel
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred while renaming the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Show($"An error occurred while renaming the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -482,7 +494,7 @@ namespace VideoExplorerMVVM.ViewModel
             try
             {
                 // Confirm the deletion action with the user
-                MessageBoxResult result = MessageBox.Show($"Are you sure you want to permanently delete '{SelectedVideo.FileName}'?", "Confirm Deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                MessageBoxResult result = Show($"Are you sure you want to permanently delete '{SelectedVideo.FileName}'?", "Confirm Deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result == MessageBoxResult.Yes)
                 {
                     // Delete the video file from the file system
@@ -508,7 +520,7 @@ namespace VideoExplorerMVVM.ViewModel
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred while deleting the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Show($"An error occurred while deleting the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -566,6 +578,92 @@ namespace VideoExplorerMVVM.ViewModel
             ((RelayCommand)RenameCommand).NotifyCanExecuteChanged();
             ((RelayCommand)DeleteCommand).NotifyCanExecuteChanged();
         }
+
+        /// <summary>
+        /// Opens a file dialog to select a video file and uploads it to the cloud.
+        /// </summary>
+        private async void UploadVideo()
+        {
+            var openFileDialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Video Files (*.mp4;*.avi;*.mkv)|*.mp4;*.avi;*.mkv",
+                Multiselect = false
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                string filePath = openFileDialog.FileName;
+                await UploadFileToCloud(filePath);
+            }
+        }
+
+        /// <summary>
+        /// Uploads a video file to the cloud.
+        /// </summary>
+        /// <param name="filePath">The path of the file to be uploaded.</param>
+        private async Task UploadFileToCloud(string filePath)
+        {
+            var fileName = Path.GetFileName(filePath);
+            StatusMessage = " Uploading Video. Status will be notified";
+            using (_httpClient)
+            {
+                using (var content = new MultipartFormDataContent())
+                {
+                    byte[] fileBytes = File.ReadAllBytes(filePath);
+                    var fileContent = new ByteArrayContent(fileBytes);
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                    content.Add(fileContent, "file", Path.GetFileName(filePath));
+                    var response = await _httpClient.PutAsync(artifactoryUrl + fileName, content);
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Show(response.IsSuccessStatusCode
+                            ? $"{fileName} uploaded successfully."
+                            : $"File upload failed. Status code: {response.StatusCode}");
+                    });
+                    StatusMessage = "";
+                }
+            }
+        }
+
+        /// <summary>
+        /// Loads the list of video files available in the cloud and updates the UI.
+        /// </summary>
+        private async Task LoadCloudVideosAsync()
+        {
+            var response = await _httpClient.GetStringAsync(artifactoryUrl);
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var fileList = ExtractFileNames(response);
+
+                CloudVideos.Clear();
+                foreach (var file in fileList)
+                {
+                    CloudVideos.Add(file);
+                }
+                StatusMessage = "Cloud Videos loaded successfully.";
+            });
+        }
+
+        /// <summary>
+        /// Extracts the file names from the given HTML content.
+        /// </summary>
+        /// <param name="htmlContent">The HTML content to extract file names from.</param>
+        private string[] ExtractFileNames(string htmlContent)
+        {
+            var matches = System.Text.RegularExpressions.Regex.Matches(htmlContent, @"href=""([^""]*)""");
+            var fileNames = new List<string>();
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                var fileName = match.Groups[1].Value;
+                if (!fileName.EndsWith("/"))
+                {
+                    fileNames.Add(fileName);
+                }
+            }
+            return fileNames.ToArray();
+        }
         #endregion
 
         #region Private Fields
@@ -582,8 +680,11 @@ namespace VideoExplorerMVVM.ViewModel
         private VideoFile _selectedVideo;
         private MediaElement _mediaElement;
         private ObservableCollection<FolderViewModel> _filteredFolders;
+        private HttpClient _httpClient;
         private static readonly List<string> RootPaths = ["C:\\Users", "D:\\", "G:\\"];
         private static readonly HashSet<string> VideoExtensions = [".mp4", ".avi", ".mkv"];
+        private readonly string artifactoryUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/";
+        private readonly string apiKey = "AKCpBtMKQFzBQtm6r43Q7PMRqLUqFpz3vdsVtVsSXqGiYTUdMRNhAYf5SGSYxeBVyJknQUZFQ"; // Replace with your actual API key
         #endregion
 
     }

@@ -70,6 +70,7 @@ namespace VideoExplorerMVVM
             if (DataContext is VideoExplorerViewModel viewModel)
             {
                 await viewModel.LoadVideosCommand.ExecuteAsync(null);
+                await viewModel.LoadCloudVideosCommand.ExecuteAsync(null);
             }
         }
 
@@ -301,6 +302,6 @@ namespace VideoExplorerMVVM
         private WindowStyle previousWindowStyle;
         private ResizeMode previousResizeMode;
         #endregion
-
+        
     }
 }
