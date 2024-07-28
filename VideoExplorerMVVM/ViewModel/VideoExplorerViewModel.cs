@@ -33,7 +33,7 @@ namespace VideoExplorerMVVM.ViewModel
             FilteredFolders = new ObservableCollection<FolderViewModel>();
             CloudVideos = new ObservableCollection<string>();
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", apiKey);
+            _httpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", Environment.GetEnvironmentVariable("JFROG_API_KEY"));
         }
         #endregion
 
@@ -684,7 +684,6 @@ namespace VideoExplorerMVVM.ViewModel
         private static readonly List<string> RootPaths = ["C:\\Users", "D:\\", "G:\\"];
         private static readonly HashSet<string> VideoExtensions = [".mp4", ".avi", ".mkv"];
         private readonly string artifactoryUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/";
-        private readonly string apiKey = "AKCpBtMKQFzBQtm6r43Q7PMRqLUqFpz3vdsVtVsSXqGiYTUdMRNhAYf5SGSYxeBVyJknQUZFQ"; // Replace with your actual API key
         #endregion
 
     }
