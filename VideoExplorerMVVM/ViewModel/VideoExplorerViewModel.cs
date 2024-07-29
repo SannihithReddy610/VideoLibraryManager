@@ -26,7 +26,8 @@ namespace VideoExplorerMVVM.ViewModel
             LoadCloudVideosCommand = new AsyncRelayCommand(LoadCloudVideosAsync);
             DeleteCloudFileCommand = new AsyncRelayCommand(DeleteCloudFileAsync);
             UploadVideoCommand = new AsyncRelayCommand(UploadVideo);
-            UploadNewVersionCommand = new AsyncRelayCommand(UploadNewVersion);
+            UploadNewVersionCommand = new AsyncRelayCommand(UploadNewVersionOfVideo);
+            DownloadPreviousVersionCommand = new AsyncRelayCommand(DownloadPreviousVersionOfVideo);
             DownloadFileCommand = new AsyncRelayCommand(DownloadVideo);
             PlayCommand = new RelayCommand(PlayVideo, CanPlay);
             PauseCommand = new RelayCommand(Pause, CanPause);
@@ -213,6 +214,8 @@ namespace VideoExplorerMVVM.ViewModel
         public ICommand UploadVideoCommand { get; }
 
         public ICommand UploadNewVersionCommand { get; }
+
+        public ICommand DownloadPreviousVersionCommand { get; }
 
         public ICommand DownloadFileCommand { get; }
 
@@ -528,6 +531,7 @@ namespace VideoExplorerMVVM.ViewModel
 
                     // Clear the selected video
                     SelectedVideo = null;
+                    _ = LoadVideosAsync();
                 }
             }
             catch (Exception ex)
@@ -634,7 +638,7 @@ namespace VideoExplorerMVVM.ViewModel
         /// <summary>
         /// Upload a new version of the video which is on cloud
         /// </summary>
-        private async Task UploadNewVersion()
+        private async Task UploadNewVersionOfVideo()
         {
             try
             {
@@ -651,6 +655,42 @@ namespace VideoExplorerMVVM.ViewModel
                     await DeleteCloudFileAsync();
                     await UploadVideo(filePath);
                     StatusMessage = "New version uploaded successfully";
+                    await LoadCloudVideosAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Downloads the previous version video file for the currently selected video file on cloud
+        /// </summary>
+        private async Task DownloadPreviousVersionOfVideo()
+        {
+            try
+            {
+                var fileName = CloudSelectedVideo.FileName;
+                var versionsFolder = "Versions/";
+                string downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    fileName);
+                StatusMessage = "Downloading Video. Status will be notified";
+                using (var response = await _httpClient.GetAsync($"{artifactoryUrl}{versionsFolder}{fileName}",
+                           HttpCompletionOption.ResponseHeadersRead))
+                {
+                    response.EnsureSuccessStatusCode();
+
+                    using (var fileStream =
+                           new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        await response.Content.CopyToAsync(fileStream);
+                    }
+                    Show(response.IsSuccessStatusCode
+                        ? $"{downloadPath} Downloaded successfully."
+                        : $"File download failed. Status code: {response.StatusCode}");
+                    StatusMessage = "";
+                    await LoadVideosAsync();
                 }
             }
             catch (Exception ex)
@@ -673,11 +713,7 @@ namespace VideoExplorerMVVM.ViewModel
                 if (response.IsSuccessStatusCode)
                 {
                     var fileContent = await response.Content.ReadAsStreamAsync();
-                    DateTimeOffset now = DateTimeOffset.UtcNow;
-                    long epochTime = now.ToUnixTimeSeconds();
-                    fileName = Path.GetFileNameWithoutExtension(fileName) + "$_" + epochTime +
-                               Path.GetExtension(fileName);
-
+                    
                     using (var content = new StreamContent(fileContent))
                     {
                         content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
@@ -718,6 +754,7 @@ namespace VideoExplorerMVVM.ViewModel
                         ? $"{downloadPath} Downloaded successfully."
                         : $"File download failed. Status code: {response.StatusCode}");
                     StatusMessage = "";
+                    await LoadVideosAsync();
                 }
             }
             catch (Exception ex)
@@ -738,6 +775,20 @@ namespace VideoExplorerMVVM.ViewModel
                 var response = await _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
                 response.EnsureSuccessStatusCode();
                 StatusMessage = "Video Deleted";
+
+                //var responses = await _httpClient.GetStringAsync(artifactoryUrl + "Versions/");
+
+                //var fileList = ExtractFileNames(responses);
+                //foreach (var file in fileList)
+                //{
+                //    if (file.FileName == fileName)
+                //    {
+                //        CloudSelectedVideo.FileName = fileName;
+                //        artifactoryUrl = artifactoryVersionUrl;
+                //        await DeleteCloudFileAsync();
+                //    }
+                //    artifactoryUrl = artifactoryUrl;
+                //}
                 await LoadCloudVideosAsync();
             }
             catch (Exception ex)
@@ -813,7 +864,8 @@ namespace VideoExplorerMVVM.ViewModel
         private HttpClient _httpClient;
         private static readonly List<string> RootPaths = ["C:\\Users", "D:\\", "G:\\"];
         private static readonly HashSet<string> VideoExtensions = [".mp4", ".avi", ".mkv"];
-        private readonly string artifactoryUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/";
+        private string artifactoryUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/";
+        private string artifactoryVersionUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/Versions/";
         private readonly string? _artifactoryKey;
         #endregion
 

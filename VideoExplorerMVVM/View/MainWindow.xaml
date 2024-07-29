@@ -106,9 +106,10 @@
                         <TextBlock Text="{Binding FileName}" FontSize="14" FontStyle="Italic">
                         <TextBlock.ContextMenu>
                             <ContextMenu>
-                                    <MenuItem Header="Upload New Version" Click="UploadNewVersionItem_Click"/>
+                                <MenuItem Header="Upload New Version" Click="UploadNewVersionItem_Click"/>
                                 <MenuItem Header="Download" Click="DownloadItem_Click"/>
                                 <MenuItem Header="Delete" Click="DeleteItem_Click"/>
+                                <MenuItem Header="Download Previous Version" Click="DownloadPreviousVersionItem_Click"/>
                                 </ContextMenu>
                         </TextBlock.ContextMenu>
                         </TextBlock>
