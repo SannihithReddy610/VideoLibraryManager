@@ -250,6 +250,17 @@ namespace VideoExplorerMVVM
         }
 
         /// <summary>
+        /// 
+        /// 
+        /// </summary>
+        /// <param name="sender">The sender of the event (MenuItem).</param>
+        /// <param name="e">The event arguments.</param>
+        private void UploadNewVersionItem_Click(object sender, RoutedEventArgs e)
+        {
+            ExecuteCommand(_viewModel.UploadNewVersionCommand, _viewModel.CloudSelectedVideo);
+        }
+
+        /// <summary>
         /// Handles the Click event of the Download MenuItem.
         /// Executes the DownloadFileCommand for the currently selected video file.
         /// </summary>

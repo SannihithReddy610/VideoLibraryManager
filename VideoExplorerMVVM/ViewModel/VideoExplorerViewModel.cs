@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.Win32;
 using VideoExplorerMVVM.Model;
 using static System.Windows.Application;
 using static System.Windows.MessageBox;
@@ -25,6 +26,7 @@ namespace VideoExplorerMVVM.ViewModel
             LoadCloudVideosCommand = new AsyncRelayCommand(LoadCloudVideosAsync);
             DeleteCloudFileCommand = new AsyncRelayCommand(DeleteCloudFileAsync);
             UploadVideoCommand = new AsyncRelayCommand(UploadVideo);
+            UploadNewVersionCommand = new AsyncRelayCommand(UploadNewVersion);
             DownloadFileCommand = new AsyncRelayCommand(DownloadVideo);
             PlayCommand = new RelayCommand(PlayVideo, CanPlay);
             PauseCommand = new RelayCommand(Pause, CanPause);
@@ -210,6 +212,8 @@ namespace VideoExplorerMVVM.ViewModel
 
         public ICommand UploadVideoCommand { get; }
 
+        public ICommand UploadNewVersionCommand { get; }
+
         public ICommand DownloadFileCommand { get; }
 
         public Visibility FolderListVisibility => IsFullScreen ? Visibility.Collapsed : Visibility.Visible;
@@ -357,45 +361,52 @@ namespace VideoExplorerMVVM.ViewModel
         /// <returns>A Task representing the asynchronous operation.</returns>
         private async Task FilterVideosAsync()
         {
-            var searchText = _searchText?.ToLower().Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(searchText))
+            try
             {
-                // Show all videos if search text is empty
-                FilteredFolders = new ObservableCollection<FolderViewModel>(Folders);
-                return;
-            }
+                var searchText = _searchText?.ToLower().Trim() ?? string.Empty;
 
-            // Perform the filtering in a background task
-            var filteredFolders = await Task.Run(() =>
-            {
-                var result = new List<FolderViewModel>();
-
-                foreach (var folder in Folders)
+                if (string.IsNullOrWhiteSpace(searchText))
                 {
-                    var filteredVideos = folder.Videos
-                        .Where(v => v.FileName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
-                        .ToList();
-
-                    if (filteredVideos.Count > 0)
-                    {
-                        var filteredFolder = new FolderViewModel(folder.FolderPath);
-                        foreach (var video in filteredVideos)
-                        {
-                            filteredFolder.Videos.Add(video);
-                        }
-                        result.Add(filteredFolder);
-                    }
+                    // Show all videos if search text is empty
+                    FilteredFolders = new ObservableCollection<FolderViewModel>(Folders);
+                    return;
                 }
 
-                return result;
-            });
+                // Perform the filtering in a background task
+                var filteredFolders = await Task.Run(() =>
+                {
+                    var result = new List<FolderViewModel>();
 
-            // Update the FilteredFolders collection on the UI thread
-            Current.Dispatcher.Invoke(() =>
+                    foreach (var folder in Folders)
+                    {
+                        var filteredVideos = folder.Videos
+                            .Where(v => v.FileName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                            .ToList();
+
+                        if (filteredVideos.Count > 0)
+                        {
+                            var filteredFolder = new FolderViewModel(folder.FolderPath);
+                            foreach (var video in filteredVideos)
+                            {
+                                filteredFolder.Videos.Add(video);
+                            }
+                            result.Add(filteredFolder);
+                        }
+                    }
+
+                    return result;
+                });
+
+                // Update the FilteredFolders collection on the UI thread
+                Current.Dispatcher.Invoke(() =>
+                {
+                    FilteredFolders = new ObservableCollection<FolderViewModel>(filteredFolders);
+                });
+            }
+            catch (Exception ex)
             {
-                FilteredFolders = new ObservableCollection<FolderViewModel>(filteredFolders);
-            });
+                Show(ex.Message);
+            }
         }
 
         /// <summary>
@@ -575,42 +586,143 @@ namespace VideoExplorerMVVM.ViewModel
         /// </summary>
         private async Task UploadVideo()
         {
-            var filePath = SelectedVideo.FilePath;
-            var fileName = Path.GetFileName(filePath);
-            StatusMessage = "Uploading Video. Status will be notified";
-            using (var content = new StreamContent(File.OpenRead(filePath)))
+            try
             {
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                var response = await _httpClient.PutAsync(artifactoryUrl + fileName, content);
+                var filePath = SelectedVideo.FilePath;
+                var fileName = Path.GetFileName(filePath);
+                StatusMessage = "Uploading Video. Status will be notified";
+                using (var content = new StreamContent(File.OpenRead(filePath)))
+                {
+                    content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    var response = await _httpClient.PutAsync(artifactoryUrl + fileName, content);
 
-                Show(response.IsSuccessStatusCode
-                    ? $"{fileName} uploaded successfully."
-                    : $"File upload failed. Status code: {response.StatusCode}");
-                StatusMessage = "";
+                    Show(response.IsSuccessStatusCode
+                        ? $"{fileName} uploaded successfully."
+                        : $"File upload failed. Status code: {response.StatusCode}");
+                    StatusMessage = "";
+                    await LoadCloudVideosAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
             }
         }
+
+        /// <summary>
+        /// Upload video to cloud
+        /// </summary>
+        /// <param name="filePath"></param>
+        private async Task UploadVideo(string filePath)
+        {
+            try
+            {
+                var fileName = Path.GetFileName(filePath);
+                using (var content = new StreamContent(File.OpenRead(filePath)))
+                {
+                    content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    await _httpClient.PutAsync(artifactoryUrl + CloudSelectedVideo.FileName, content);
+                }
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
+
+        }
+
+        /// <summary>
+        /// Upload a new version of the video which is on cloud
+        /// </summary>
+        private async Task UploadNewVersion()
+        {
+            try
+            {
+                OpenFileDialog openFileDialog = new OpenFileDialog
+                {
+                    Filter = "Video Files|*.mp4;*.avi;*.mov;*.wmv;*.flv;*.mkv"
+                };
+
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    StatusMessage = "Uploading new version. You will be notified";
+                    var filePath = openFileDialog.FileName;
+                    await CopyVideo();
+                    await DeleteCloudFileAsync();
+                    await UploadVideo(filePath);
+                    StatusMessage = "New version uploaded successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Copy Video from one folder to other on cloud
+        /// </summary>
+        /// <returns></returns>
+        private async Task CopyVideo()
+        {
+            try
+            {
+                var fileName = CloudSelectedVideo.FileName;
+                var response = await _httpClient.GetAsync($"{artifactoryUrl}{fileName}",
+                    HttpCompletionOption.ResponseHeadersRead);
+                if (response.IsSuccessStatusCode)
+                {
+                    var fileContent = await response.Content.ReadAsStreamAsync();
+                    DateTimeOffset now = DateTimeOffset.UtcNow;
+                    long epochTime = now.ToUnixTimeSeconds();
+                    fileName = Path.GetFileNameWithoutExtension(fileName) + "$_" + epochTime +
+                               Path.GetExtension(fileName);
+
+                    using (var content = new StreamContent(fileContent))
+                    {
+                        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                        _ = await _httpClient.PutAsync(artifactoryUrl + "Versions/" + fileName, content);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
+        }
+
 
         /// <summary>
         /// Download selected video file from cloud to local.
         /// </summary>
         private async Task DownloadVideo()
         {
-            var fileName = CloudSelectedVideo.FileName;
-            string downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), fileName);
-            StatusMessage = "Downloading Video. Status will be notified";
-            using (var response = await _httpClient.GetAsync($"{artifactoryUrl}{fileName}",
-                       HttpCompletionOption.ResponseHeadersRead))
+            try
             {
-                response.EnsureSuccessStatusCode();
-
-                using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                var fileName = CloudSelectedVideo.FileName;
+                string downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    fileName);
+                StatusMessage = "Downloading Video. Status will be notified";
+                using (var response = await _httpClient.GetAsync($"{artifactoryUrl}{fileName}",
+                           HttpCompletionOption.ResponseHeadersRead))
                 {
-                    await response.Content.CopyToAsync(fileStream);
+                    response.EnsureSuccessStatusCode();
+
+                    using (var fileStream =
+                           new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        await response.Content.CopyToAsync(fileStream);
+                    }
+                    Show(response.IsSuccessStatusCode
+                        ? $"{downloadPath} Downloaded successfully."
+                        : $"File download failed. Status code: {response.StatusCode}");
+                    StatusMessage = "";
                 }
-                Show(response.IsSuccessStatusCode
-                    ? $"{downloadPath} Downloaded successfully."
-                    : $"File download failed. Status code: {response.StatusCode}");
-                StatusMessage = "";
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
             }
         }
 
@@ -619,14 +731,19 @@ namespace VideoExplorerMVVM.ViewModel
         /// </summary>
         private async Task DeleteCloudFileAsync()
         {
-            var fileName = CloudSelectedVideo.FileName;
-            StatusMessage = "Deleting Video. Status will be notified";
-            var response = await _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
-            response.EnsureSuccessStatusCode();
-            Show(response.IsSuccessStatusCode
-                ? $"{fileName} Deleted successfully."
-                : $"Failed to delete {fileName}. Status code: {response.StatusCode}");
-            StatusMessage = "";
+            try
+            {
+                var fileName = CloudSelectedVideo.FileName;
+                StatusMessage = "Deleting Video. Status will be notified";
+                var response = await _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
+                response.EnsureSuccessStatusCode();
+                StatusMessage = "Video Deleted";
+                await LoadCloudVideosAsync();
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
         }
 
         /// <summary>
@@ -634,19 +751,26 @@ namespace VideoExplorerMVVM.ViewModel
         /// </summary>
         private async Task LoadCloudVideosAsync()
         {
-            var response = await _httpClient.GetStringAsync(artifactoryUrl);
-
-            Current.Dispatcher.Invoke(() =>
+            try
             {
-                var fileList = ExtractFileNames(response);
+                var response = await _httpClient.GetStringAsync(artifactoryUrl);
 
-                CloudVideos.Clear();
-                foreach (var file in fileList)
+                Current.Dispatcher.Invoke(() =>
                 {
-                    CloudVideos.Add(file);
-                }
-                StatusMessage = "Cloud Videos loaded successfully.";
-            });
+                    var fileList = ExtractFileNames(response);
+
+                    CloudVideos.Clear();
+                    foreach (var file in fileList)
+                    {
+                        CloudVideos.Add(file);
+                    }
+                    StatusMessage = "Cloud Videos loaded successfully.";
+                });
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
         }
 
         /// <summary>
