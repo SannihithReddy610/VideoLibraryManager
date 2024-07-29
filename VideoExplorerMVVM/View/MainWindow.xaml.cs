@@ -101,10 +101,15 @@ namespace VideoExplorerMVVM
         /// <param name="e">The event arguments containing the old and new selected items.</param>
         private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            var selectedVideo = e.NewValue as VideoFile;
-            if (selectedVideo != null)
+            var selectedItem = e.NewValue;
+
+            if (selectedItem is VideoFile selectedVideoFile)
             {
-                _viewModel.SelectedVideo = selectedVideo;
+                _viewModel.SelectedVideo = selectedVideoFile;
+            }
+            else if (selectedItem is CloudVideoFile selectedCloudVideoFile)
+            {
+                _viewModel.CloudSelectedVideo = selectedCloudVideoFile;
             }
         }
 
@@ -231,6 +236,28 @@ namespace VideoExplorerMVVM
         private void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
         {
             ExecuteCommand(_viewModel.DeleteCommand, _viewModel.SelectedVideo);
+        }
+
+        /// <summary>
+        /// Handles the Click event of the Upload MenuItem.
+        /// Executes the UploadVideoCommand for the currently selected video file.
+        /// </summary>
+        /// <param name="sender">The sender of the event (MenuItem).</param>
+        /// <param name="e">The event arguments.</param>
+        private void UploadVideoToCloud_Click(object sender, RoutedEventArgs e)
+        {
+            ExecuteCommand(_viewModel.UploadVideoCommand, _viewModel.SelectedVideo);
+        }
+
+        /// <summary>
+        /// Handles the Click event of the Download MenuItem.
+        /// Executes the DownloadFileCommand for the currently selected video file.
+        /// </summary>
+        /// <param name="sender">The sender of the event (MenuItem).</param>
+        /// <param name="e">The event arguments.</param>
+        private void DownloadItem_Click(object sender, RoutedEventArgs e)
+        {
+            ExecuteCommand(_viewModel.DownloadFileCommand, _viewModel.SelectedVideo);
         }
 
         /// <summary>

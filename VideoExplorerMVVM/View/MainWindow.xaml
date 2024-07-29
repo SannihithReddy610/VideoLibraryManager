@@ -51,6 +51,7 @@
                                             <MenuItem Header="Play" Click="PlayMenuItem_Click"/>
                                             <MenuItem Header="Rename" Click="RenameMenuItem_Click"/>
                                             <MenuItem Header="Delete" Click="DeleteMenuItem_Click"/>
+                                            <MenuItem Header="Upload" Click="UploadVideoToCloud_Click"/>
                                         </ContextMenu>
                                     </TextBlock.ContextMenu>
                                     <TextBlock.InputBindings>
@@ -90,17 +91,23 @@
                 </TreeView.ItemTemplate>
             </TreeView>
             <Label Grid.Row="1" Content="Cloud Videos (Download to play)" HorizontalAlignment="Left" Margin="10,294,0,0" VerticalAlignment="Top" FontFamily="Comic Sans MS" FontWeight="Bold" FontSize="11" Height="25" Width="180"/>
-            <TreeView MaxHeight="250" MaxWidth="230" 
+            <TreeView MaxHeight="250" MaxWidth="230"
+                      SelectedItemChanged="TreeView_SelectedItemChanged" 
                       ItemsSource="{Binding CloudVideos}" RenderTransformOrigin="0.523,0.54" Margin="0,51,-1,-51" Grid.Row="1">
                 <TreeView.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding FileName}" FontSize="14" FontStyle="Italic"/>
+                        <TextBlock Text="{Binding FileName}" FontSize="14" FontStyle="Italic">
+                        <TextBlock.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Download" Click="DownloadItem_Click"/>
+                            </ContextMenu>
+                        </TextBlock.ContextMenu>
+                        </TextBlock>
                     </DataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
             <TextBlock Grid.Row="1"  Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="14,727,6,120" FontSize="14" FontStyle="Italic" Foreground="Teal" ScrollViewer.HorizontalScrollBarVisibility="Auto" MaxWidth="210"/>
             <Button Content="Refresh Video" Height="24" Width="100" HorizontalAlignment="Left" Margin="70,698,0,0" Grid.Row="1" VerticalAlignment="Top" Command="{Binding SyncVideosCommand}" />
-            <Button Content="Upload Video" Height="24" Width="100" HorizontalAlignment="Left" Margin="15,613,0,0" Grid.Row="1" VerticalAlignment="Top" Command="{Binding UploadVideoCommand}" />
             <TextBlock Height="52" Width="229" HorizontalAlignment="Left" Margin="15,729,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14" FontStyle="Italic" Foreground="Teal" Text="{Binding StatusMessage}" />
         </Grid>
 
