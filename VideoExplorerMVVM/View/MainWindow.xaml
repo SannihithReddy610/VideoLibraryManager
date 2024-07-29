@@ -40,6 +40,11 @@
                       SelectedItemChanged="TreeView_SelectedItemChanged" 
                       ScrollViewer.HorizontalScrollBarVisibility="Auto" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True" MaxHeight="250" MaxWidth="230" Margin="10,27,10,515" ScrollViewer.VerticalScrollBarVisibility="Auto" >
+                <TreeView.Resources>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    </Style>
+                </TreeView.Resources>
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type vm:FolderViewModel}" ItemsSource="{Binding Videos}">
                         <TextBlock Text="{Binding DisplayFolderName}" FontSize="14" FontStyle="Italic"/>
@@ -100,7 +105,8 @@
                         <TextBlock.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Download" Click="DownloadItem_Click"/>
-                            </ContextMenu>
+                                <MenuItem Header="Delete" Click="DeleteItem_Click"/>
+                                </ContextMenu>
                         </TextBlock.ContextMenu>
                         </TextBlock>
                     </DataTemplate>

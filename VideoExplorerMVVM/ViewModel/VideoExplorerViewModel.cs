@@ -23,6 +23,7 @@ namespace VideoExplorerMVVM.ViewModel
             LoadVideosCommand = new AsyncRelayCommand(LoadVideosAsync);
             SyncVideosCommand = new AsyncRelayCommand(SyncVideosAsync);
             LoadCloudVideosCommand = new AsyncRelayCommand(LoadCloudVideosAsync);
+            DeleteCloudFileCommand = new AsyncRelayCommand(DeleteCloudFileAsync);
             UploadVideoCommand = new AsyncRelayCommand(UploadVideo);
             DownloadFileCommand = new AsyncRelayCommand(DownloadVideo);
             PlayCommand = new RelayCommand(PlayVideo, CanPlay);
@@ -185,11 +186,13 @@ namespace VideoExplorerMVVM.ViewModel
 
         public ObservableCollection<CloudVideoFile> CloudVideos { get; }
 
-        public IAsyncRelayCommand LoadVideosCommand { get; set; }
+        public IAsyncRelayCommand LoadVideosCommand { get; }
 
         public IAsyncRelayCommand LoadCloudVideosCommand { get; }
 
-        public ICommand SyncVideosCommand { get; set; }
+        public IAsyncRelayCommand DeleteCloudFileCommand { get; }
+
+        public ICommand SyncVideosCommand { get; }
 
         public ICommand PlayCommand { get; }
 
@@ -609,6 +612,21 @@ namespace VideoExplorerMVVM.ViewModel
                     : $"File download failed. Status code: {response.StatusCode}");
                 StatusMessage = "";
             }
+        }
+
+        /// <summary>
+        /// Deletes selected video from cloud
+        /// </summary>
+        private async Task DeleteCloudFileAsync()
+        {
+            var fileName = CloudSelectedVideo.FileName;
+            StatusMessage = "Deleting Video. Status will be notified";
+            var response = await _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
+            response.EnsureSuccessStatusCode();
+            Show(response.IsSuccessStatusCode
+                ? $"{fileName} Deleted successfully."
+                : $"Failed to delete {fileName}. Status code: {response.StatusCode}");
+            StatusMessage = "";
         }
 
         /// <summary>

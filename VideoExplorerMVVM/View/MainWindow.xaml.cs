@@ -261,6 +261,17 @@ namespace VideoExplorerMVVM
         }
 
         /// <summary>
+        /// Handles the Click event of the Delete MenuItem.
+        /// Executes the DeleteCloudFileCommand for the currently selected video file.
+        /// </summary>
+        /// <param name="sender">The sender of the event (MenuItem).</param>
+        /// <param name="e">The event arguments.</param>
+        private void DeleteItem_Click(object sender, RoutedEventArgs e)
+        {
+            ExecuteCommand(_viewModel.DeleteCloudFileCommand, _viewModel.SelectedVideo);
+        }
+
+        /// <summary>
         /// Executes the specified command with the given parameter, if the command can be executed.
         /// </summary>
         /// <param name="command">The command to execute.</param>

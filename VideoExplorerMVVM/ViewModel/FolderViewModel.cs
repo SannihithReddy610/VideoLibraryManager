@@ -13,6 +13,7 @@ namespace VideoExplorerMVVM.ViewModel
         {
             FolderPath = folderPath;
             Videos = new ObservableCollection<VideoFile>();
+            IsExpanded = true;
         }
         #endregion
 
@@ -20,6 +21,19 @@ namespace VideoExplorerMVVM.ViewModel
         public string FolderPath { get; }
 
         public ObservableCollection<VideoFile> Videos { get; }
+
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set
+            {
+                if (_isExpanded != value)
+                {
+                    _isExpanded = value;
+                    OnPropertyChanged(nameof(IsExpanded));
+                }
+            }
+        }
         #endregion
 
         #region Public Methods
@@ -44,5 +58,7 @@ namespace VideoExplorerMVVM.ViewModel
             return directoryInfo.Name;
         }
         #endregion
+
+        private bool _isExpanded;
     }
 }
