@@ -12,6 +12,9 @@
         WindowState="Maximized"
         ResizeMode="CanResizeWithGrip"
         Background="LightGray">
+    <Window.Resources>
+        <local:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </Window.Resources>
     <Window.DataContext>
         <vm:VideoManagerViewModel/>
     </Window.DataContext>
@@ -27,13 +30,12 @@
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Text="Video Library" 
-               FontSize="36" 
-               FontWeight="Bold" 
-               FontStyle="Italic" 
-               Foreground="Teal" 
-               Margin="15,6,15,26"/>
-            <Label Grid.Row="0" Content="Search Videos:" HorizontalAlignment="Left" Margin="10
-                   ,59,0,0" VerticalAlignment="Top" Width="93" FontWeight="Bold" FontFamily="Comic Sans MS" FontSize="11" Height="25"/>
+                       FontSize="36" 
+                       FontWeight="Bold" 
+                       FontStyle="Italic" 
+                       Foreground="Teal" 
+                       Margin="15,6,15,26"/>
+            <Label Grid.Row="0" Content="Search Videos:" HorizontalAlignment="Left" Margin="10,59,0,0" VerticalAlignment="Top" Width="93" FontWeight="Bold" FontFamily="Comic Sans MS" FontSize="11" Height="25"/>
             <TextBox Grid.Row="0" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                      Margin="102,60,19,18" />
             <Label Grid.Row="1" Content="Local Videos (Expand folder to view)" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" FontFamily="Comic Sans MS" FontWeight="Bold" FontSize="11" Height="25" Width="206"/>
@@ -53,11 +55,11 @@
                             <DataTemplate DataType="{x:Type m:VideoFile}">
                                 <TextBlock Text="{Binding FileName}" FontSize="12">
                                     <TextBlock.ContextMenu>
-                                        <ContextMenu>
-                                            <MenuItem Header="Play" Click="PlayMenuItem_Click"/>
-                                            <MenuItem Header="Rename" Click="RenameMenuItem_Click"/>
-                                            <MenuItem Header="Delete" Click="DeleteMenuItem_Click"/>
-                                            <MenuItem Header="Upload" Click="UploadVideoToCloud_Click"/>
+                                        <ContextMenu DataContext="{Binding Source={StaticResource Proxy}, Path=Data}">
+                                            <MenuItem Header="Play" Command="{Binding PlayCommand}" CommandParameter="{Binding}"/>
+                                            <MenuItem Header="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding}"/>
+                                            <MenuItem Header="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding}"/>
+                                            <MenuItem Header="Upload" Command="{Binding UploadVideoCommand}" CommandParameter="{Binding}"/>
                                         </ContextMenu>
                                     </TextBlock.ContextMenu>
                                     <TextBlock.InputBindings>
@@ -104,14 +106,14 @@
                 <TreeView.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding FileName}" FontSize="14" FontStyle="Italic">
-                        <TextBlock.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="Upload New Version" Click="UploadNewVersionItem_Click"/>
-                                <MenuItem Header="Download" Click="DownloadItem_Click"/>
-                                <MenuItem Header="Delete" Click="DeleteItem_Click"/>
-                                <MenuItem Header="Download Previous Version" Click="DownloadPreviousVersionItem_Click"/>
+                            <TextBlock.ContextMenu>
+                                <ContextMenu DataContext="{Binding Source={StaticResource Proxy}, Path=Data}">
+                                    <MenuItem Header="Upload New Version" Command="{Binding UploadNewVersionCommand}" CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Download" Command="{Binding DownloadFileCommand}" CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Delete" Command="{Binding DeleteCloudFileCommand}" CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Download Previous Version" Command="{Binding DownloadPreviousVersionCommand}" CommandParameter="{Binding}"/>
                                 </ContextMenu>
-                        </TextBlock.ContextMenu>
+                            </TextBlock.ContextMenu>
                         </TextBlock>
                     </DataTemplate>
                 </TreeView.ItemTemplate>

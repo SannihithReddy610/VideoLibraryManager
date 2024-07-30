@@ -59,6 +59,7 @@ namespace VideoLibraryManager.View
             mediaElement.MediaOpened += MediaElement_MediaOpened;
             mediaElement.MediaEnded += MediaElement_MediaEnded;
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
         }
 
         /// <summary>
@@ -207,111 +208,13 @@ namespace VideoLibraryManager.View
         }
 
         /// <summary>
-        /// Handles the Click event of the Play MenuItem.
-        /// Executes the PlayCommand for the currently selected video file.
-        /// </summary>
-        /// <param name="sender">The sender of the event (MenuItem).</param>
-        /// <param name="e">The event arguments.</param>
-        private void PlayMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.PlayCommand, _viewModel.SelectedVideo);
-        }
-
-        /// <summary>
-        /// Handles the Click event of the Rename MenuItem.
-        /// Executes the RenameCommand for the currently selected video file.
-        /// </summary>
-        /// <param name="sender">The sender of the event (MenuItem).</param>
-        /// <param name="e">The event arguments.</param>
-        private void RenameMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.RenameCommand, _viewModel.SelectedVideo);
-        }
-
-        /// <summary>
-        /// Handles the Click event of the Delete MenuItem.
-        /// Executes the DeleteCommand for the currently selected video file.
-        /// </summary>
-        /// <param name="sender">The sender of the event (MenuItem).</param>
-        /// <param name="e">The event arguments.</param>
-        private void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.DeleteCommand, _viewModel.SelectedVideo);
-        }
-
-        /// <summary>
-        /// Handles the Click event of the Upload MenuItem.
-        /// Executes the UploadVideoCommand for the currently selected video file.
-        /// </summary>
-        /// <param name="sender">The sender of the event (MenuItem).</param>
-        /// <param name="e">The event arguments.</param>
-        private void UploadVideoToCloud_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.UploadVideoCommand, _viewModel.SelectedVideo);
-        }
-
-        /// <summary>
-        /// Handles the Click event of the Upload New Version MenuItem.
-        /// Executes the UploadNewVersionCommand for the currently selected video file on cloud.
-        /// </summary>
-        /// <param name="sender">The sender of the event (MenuItem).</param>
-        /// <param name="e">The event arguments.</param>
-        private void UploadNewVersionItem_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.UploadNewVersionCommand, _viewModel.CloudSelectedVideo);
-        }
-
-        /// <summary>
-        /// Handles the Click event of the Download Previous Version MenuItem.
-        /// Executes the DownloadPreviousVersionCommand for the currently selected video file on cloud.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void DownloadPreviousVersionItem_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.DownloadPreviousVersionCommand, _viewModel.CloudSelectedVideo);
-        }
-
-        /// <summary>
-        /// Handles the Click event of the Download MenuItem.
-        /// Executes the DownloadFileCommand for the currently selected video file.
-        /// </summary>
-        /// <param name="sender">The sender of the event (MenuItem).</param>
-        /// <param name="e">The event arguments.</param>
-        private void DownloadItem_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.DownloadFileCommand, _viewModel.SelectedVideo);
-        }
-
-        /// <summary>
-        /// Handles the Click event of the Delete MenuItem.
-        /// Executes the DeleteCloudFileCommand for the currently selected video file.
-        /// </summary>
-        /// <param name="sender">The sender of the event (MenuItem).</param>
-        /// <param name="e">The event arguments.</param>
-        private void DeleteItem_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteCommand(_viewModel.DeleteCloudFileCommand, _viewModel.SelectedVideo);
-        }
-
-        /// <summary>
-        /// Executes the specified command with the given parameter, if the command can be executed.
-        /// </summary>
-        /// <param name="command">The command to execute.</param>
-        /// <param name="parameter">The parameter to pass to the command.</param>
-        private void ExecuteCommand(ICommand command, object parameter)
-        {
-            command.Execute(parameter);
-        }
-
-        /// <summary>
         /// Enters full-screen mode, storing the current window state, style, and resize mode.
         /// </summary>
         private void EnterFullScreen()
         {
-            previousWindowState = this.WindowState;
-            previousWindowStyle = this.WindowStyle;
-            previousResizeMode = this.ResizeMode;
+            _previousWindowState = this.WindowState;
+            _previousWindowStyle = this.WindowStyle;
+            _previousResizeMode = this.ResizeMode;
 
             this.WindowState = WindowState.Maximized;
             this.WindowStyle = WindowStyle.None;
@@ -329,12 +232,12 @@ namespace VideoLibraryManager.View
         /// </summary>
         private void ExitFullScreen()
         {
-            this.WindowState = previousWindowState;
-            this.WindowStyle = previousWindowStyle;
-            this.ResizeMode = previousResizeMode;
+            this.WindowState = _previousWindowState;
+            this.WindowStyle = _previousWindowStyle;
+            this.ResizeMode = _previousResizeMode;
 
-            mediaElement.Width = double.NaN; // Reset to Auto
-            mediaElement.Height = double.NaN; // Reset to Auto
+            mediaElement.Width = double.NaN; 
+            mediaElement.Height = double.NaN; 
             _isFullScreen = false;
 
             this.KeyDown -= FullScreen_KeyDown;
@@ -353,15 +256,25 @@ namespace VideoLibraryManager.View
                 viewModel.IsFullScreen = false;
             }
         }
+
+        /// <summary>
+        /// Handle current domain unhandled Exceptions
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            
+        }
         #endregion
 
         #region Private Fields
         private DispatcherTimer _timer;
-        private VideoManagerViewModel _viewModel;
+        private readonly VideoManagerViewModel _viewModel;
         private bool _isFullScreen = false;
-        private WindowState previousWindowState;
-        private WindowStyle previousWindowStyle;
-        private ResizeMode previousResizeMode;
+        private WindowState _previousWindowState;
+        private WindowStyle _previousWindowStyle;
+        private ResizeMode _previousResizeMode;
         #endregion
         
     }
