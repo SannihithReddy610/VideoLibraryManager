@@ -1,11 +1,11 @@
-﻿<Window x:Class="VideoExplorerMVVM.MainWindow"
+﻿<Window x:Class="VideoLibraryManager.View.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:VideoExplorerMVVM"
-        xmlns:vm="clr-namespace:VideoExplorerMVVM.ViewModel"
-        xmlns:m="clr-namespace:VideoExplorerMVVM.Model"
+        xmlns:local="clr-namespace:VideoLibraryManager"
+        xmlns:vm="clr-namespace:VideoLibraryManager.ViewModel"
+        xmlns:m="clr-namespace:VideoLibraryManager.Model"
         mc:Ignorable="d"
         Title="Video Explorer"
         WindowStyle="SingleBorderWindow"
@@ -13,7 +13,7 @@
         ResizeMode="CanResizeWithGrip"
         Background="LightGray">
     <Window.DataContext>
-        <vm:VideoExplorerViewModel/>
+        <vm:VideoManagerViewModel/>
     </Window.DataContext>
     <Grid>
         <Grid.ColumnDefinitions>

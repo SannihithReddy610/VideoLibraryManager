@@ -9,17 +9,17 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
-using VideoExplorerMVVM.Model;
+using VideoLibraryManager.Model;
 using static System.Windows.Application;
 using static System.Windows.MessageBox;
 #endregion
 
-namespace VideoExplorerMVVM.ViewModel
+namespace VideoLibraryManager.ViewModel
 {
-    public class VideoExplorerViewModel : ViewModelBase
+    public class VideoManagerViewModel : ViewModelBase
     {
         #region Constructor
-        public VideoExplorerViewModel()
+        public VideoManagerViewModel()
         {
             LoadVideosCommand = new AsyncRelayCommand(LoadVideosAsync);
             SyncVideosCommand = new AsyncRelayCommand(SyncVideosAsync);
@@ -653,8 +653,9 @@ namespace VideoExplorerMVVM.ViewModel
                     var filePath = openFileDialog.FileName;
                     await MoveVideoFile();
                     await UploadVideo(filePath);
-                    StatusMessage = "New version uploaded successfully";
                     await LoadCloudVideosAsync();
+                    StatusMessage = "New version uploaded successfully";
+                    Show("New version uploaded successfully");
                 }
             }
             catch (Exception ex)

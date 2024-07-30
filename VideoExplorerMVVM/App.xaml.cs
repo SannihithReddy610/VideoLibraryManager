@@ -2,7 +2,7 @@
 using System.Data;
 using System.Windows;
 
-namespace VideoExplorerMVVM
+namespace VideoLibraryManager
 {
     /// <summary>
     /// Interaction logic for App.xaml

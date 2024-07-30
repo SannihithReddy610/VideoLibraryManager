@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.IO;
 #endregion
 
-namespace VideoExplorerMVVM.Model
+namespace VideoLibraryManager.Model
 {
     public class VideoFile : INotifyPropertyChanged
     {

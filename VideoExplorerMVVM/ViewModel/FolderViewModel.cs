@@ -1,10 +1,11 @@
 ﻿#region Directives
 using System.Collections.ObjectModel;
 using System.IO;
-using VideoExplorerMVVM.Model;
+using VideoLibraryManager.Model;
+
 #endregion
 
-namespace VideoExplorerMVVM.ViewModel
+namespace VideoLibraryManager.ViewModel
 {
     public class FolderViewModel : ViewModelBase
     {

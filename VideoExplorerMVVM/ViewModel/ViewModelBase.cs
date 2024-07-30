@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace VideoExplorerMVVM.ViewModel
+namespace VideoLibraryManager.ViewModel
 {
     public class ViewModelBase : ObservableObject
     {

@@ -2,11 +2,12 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using VideoExplorerMVVM.Model;
-using VideoExplorerMVVM.ViewModel;
+using VideoLibraryManager.Model;
+using VideoLibraryManager.ViewModel;
+
 #endregion
 
-namespace VideoExplorerMVVM
+namespace VideoLibraryManager.View
 {
     public partial class MainWindow : Window
     {
@@ -19,7 +20,7 @@ namespace VideoExplorerMVVM
         public MainWindow()
         {
             InitializeComponent();
-            _viewModel = new VideoExplorerViewModel();
+            _viewModel = new VideoManagerViewModel();
             SetDataContextAndMediaElement();
             InitializeTimer();
             RegisterEventHandlers();
@@ -67,7 +68,7 @@ namespace VideoExplorerMVVM
         /// <param name="e">The event data associated with the loaded event.</param>
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            if (DataContext is VideoExplorerViewModel viewModel)
+            if (DataContext is VideoManagerViewModel viewModel)
             {
                 await viewModel.LoadVideosCommand.ExecuteAsync(null);
                 await viewModel.LoadCloudVideosCommand.ExecuteAsync(null);
@@ -82,11 +83,11 @@ namespace VideoExplorerMVVM
         /// <param name="e">The event arguments containing old and new values of DataContext.</param>
         private void MainWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            if (e.OldValue is VideoExplorerViewModel oldViewModel)
+            if (e.OldValue is VideoManagerViewModel oldViewModel)
             {
                 oldViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             }
-            if (e.NewValue is VideoExplorerViewModel newViewModel)
+            if (e.NewValue is VideoManagerViewModel newViewModel)
             {
                 newViewModel.PropertyChanged += ViewModel_PropertyChanged;
                 newViewModel.MediaElement = mediaElement;
@@ -121,9 +122,9 @@ namespace VideoExplorerMVVM
         /// <param name="e">The event arguments containing the name of the changed property.</param>
         private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(VideoExplorerViewModel.IsFullScreen))
+            if (e.PropertyName == nameof(VideoManagerViewModel.IsFullScreen))
             {
-                if ((sender as VideoExplorerViewModel).IsFullScreen)
+                if ((sender as VideoManagerViewModel).IsFullScreen)
                 {
                     EnterFullScreen();
                 }
@@ -197,7 +198,7 @@ namespace VideoExplorerMVVM
         /// <param name="e">The event arguments.</param>
         private void Timer_Tick(object sender, EventArgs e)
         {
-            var viewModel = DataContext as VideoExplorerViewModel;
+            var viewModel = DataContext as VideoManagerViewModel;
             if (viewModel != null && mediaElement.Source != null && mediaElement.NaturalDuration.HasTimeSpan)
             {
                 viewModel.SeekBarValue = mediaElement.Position.TotalSeconds;
@@ -348,7 +349,7 @@ namespace VideoExplorerMVVM
         {
             if (e.Key == Key.Escape && _isFullScreen)
             {
-                var viewModel = DataContext as VideoExplorerViewModel;
+                var viewModel = DataContext as VideoManagerViewModel;
                 viewModel.IsFullScreen = false;
             }
         }
@@ -356,7 +357,7 @@ namespace VideoExplorerMVVM
 
         #region Private Fields
         private DispatcherTimer _timer;
-        private VideoExplorerViewModel _viewModel;
+        private VideoManagerViewModel _viewModel;
         private bool _isFullScreen = false;
         private WindowState previousWindowState;
         private WindowStyle previousWindowStyle;
