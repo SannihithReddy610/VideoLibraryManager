@@ -414,21 +414,22 @@ namespace VideoLibraryManager.ViewModel
         /// </summary>
         private void PlayVideo()
         {
-            try{
-            if (_isPaused)
+            try
             {
-                MediaElement.Play();
-            }
-            else
-            {
-                MediaElement.Source = new Uri(SelectedVideo.FilePath);
-                MediaElement.Play();
-                PlayingVideo = SelectedVideo.FileName;
-            }
+                if (_isPaused)
+                {
+                    MediaElement.Play();
+                }
+                else
+                {
+                    MediaElement.Source = new Uri(SelectedVideo.FilePath);
+                    MediaElement.Play();
+                    PlayingVideo = SelectedVideo.FileName;
+                }
 
-            _isPlaying = true;
-            _isPaused = false;
-            //UpdateCanExecute();
+                _isPlaying = true;
+                _isPaused = false;
+                UpdateCanExecute();
             }
             catch (Exception ex)
             {
@@ -446,6 +447,7 @@ namespace VideoLibraryManager.ViewModel
                 MediaElement.Pause();
                 _isPlaying = false;
                 _isPaused = true;
+                UpdateCanExecute();
             }
             catch (Exception ex)
             {
@@ -463,6 +465,7 @@ namespace VideoLibraryManager.ViewModel
                 MediaElement.Stop();
                 _isPlaying = false;
                 _isPaused = false;
+                UpdateCanExecute();
             }
             catch (Exception ex)
             {
@@ -577,6 +580,16 @@ namespace VideoLibraryManager.ViewModel
         /// Determines if the Stop command can execute.
         /// </summary>
         private bool CanStop() => _isPlaying || _isPaused;
+
+        /// <summary>
+        /// Notifies play, pause and stop commands about potential changes in their execution state.
+        /// </summary>
+        private void UpdateCanExecute()
+        {
+            ((RelayCommand)PlayCommand).NotifyCanExecuteChanged();
+            ((RelayCommand)PauseCommand).NotifyCanExecuteChanged();
+            ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
+        }
 
         /// <summary>
         /// Handles double-click on a video to set the selected video and start playback.
@@ -716,13 +729,13 @@ namespace VideoLibraryManager.ViewModel
                 if (response.IsSuccessStatusCode)
                 {
                     var fileContent = await response.Content.ReadAsStreamAsync();
-                    
+
                     using (var content = new StreamContent(fileContent))
                     {
                         content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
                         _ = await _httpClient.PutAsync(artifactoryVersionUrl + fileName, content);
                     }
-                    _= _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
+                    _ = _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
 
                 }
             }
@@ -785,7 +798,7 @@ namespace VideoLibraryManager.ViewModel
                 }
                 catch (Exception ex)
                 {
-                   
+
                 }
                 await LoadCloudVideosAsync();
             }

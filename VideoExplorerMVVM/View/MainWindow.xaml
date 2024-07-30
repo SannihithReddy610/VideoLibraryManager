@@ -56,7 +56,6 @@
                                 <TextBlock Text="{Binding FileName}" FontSize="12">
                                     <TextBlock.ContextMenu>
                                         <ContextMenu DataContext="{Binding Source={StaticResource Proxy}, Path=Data}">
-                                            <MenuItem Header="Play" Command="{Binding PlayCommand}" CommandParameter="{Binding}"/>
                                             <MenuItem Header="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding}"/>
                                             <MenuItem Header="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding}"/>
                                             <MenuItem Header="Upload" Command="{Binding UploadVideoCommand}" CommandParameter="{Binding}"/>

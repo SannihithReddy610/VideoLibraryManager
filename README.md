@@ -17,7 +17,6 @@ This is a WPF application (following the MVVM pattern) designed to view and mana
 
 3. Context Menu Options (Right-Click on Local Videos):
 
-- Play video.
 - Rename video.
 - Delete video.
 - Upload video files to the cloud.
