@@ -68,7 +68,6 @@ namespace VideoLibraryManager.ViewModel
                 {
                     _selectedVideo = value;
                     OnPropertyChanged(nameof(SelectedVideo));
-                    UpdateCanExecute();
                 }
             }
         }
@@ -82,7 +81,6 @@ namespace VideoLibraryManager.ViewModel
                 {
                     _cloudSelectedVideo = value;
                     OnPropertyChanged(nameof(CloudSelectedVideo));
-                    UpdateCanExecute();
                 }
             }
         }
@@ -142,7 +140,6 @@ namespace VideoLibraryManager.ViewModel
                 {
                     _fileName = value;
                     OnPropertyChanged(nameof(FileName));
-                    UpdateCanExecute();
                 }
             }
         }
@@ -417,6 +414,7 @@ namespace VideoLibraryManager.ViewModel
         /// </summary>
         private void PlayVideo()
         {
+            try{
             if (_isPaused)
             {
                 MediaElement.Play();
@@ -430,7 +428,12 @@ namespace VideoLibraryManager.ViewModel
 
             _isPlaying = true;
             _isPaused = false;
-            UpdateCanExecute();
+            //UpdateCanExecute();
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
         }
 
         /// <summary>
@@ -438,10 +441,16 @@ namespace VideoLibraryManager.ViewModel
         /// </summary>
         private void Pause()
         {
-            MediaElement.Pause();
-            _isPlaying = false;
-            _isPaused = true;
-            UpdateCanExecute();
+            try
+            {
+                MediaElement.Pause();
+                _isPlaying = false;
+                _isPaused = true;
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
         }
 
         /// <summary>
@@ -449,10 +458,16 @@ namespace VideoLibraryManager.ViewModel
         /// </summary>
         private void Stop()
         {
-            MediaElement.Stop();
-            _isPlaying = false;
-            _isPaused = false;
-            UpdateCanExecute();
+            try
+            {
+                MediaElement.Stop();
+                _isPlaying = false;
+                _isPaused = false;
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
+            }
         }
 
         /// <summary>
@@ -571,18 +586,6 @@ namespace VideoLibraryManager.ViewModel
         {
             SelectedVideo = videoFile;
             PlayVideo();
-        }
-
-        /// <summary>
-        /// Notifies play, pause, stop, rename, and delete commands about potential changes in their execution state.
-        /// </summary>
-        private void UpdateCanExecute()
-        {
-            ((RelayCommand)PlayCommand).NotifyCanExecuteChanged();
-            ((RelayCommand)PauseCommand).NotifyCanExecuteChanged();
-            ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
-            ((RelayCommand)RenameCommand).NotifyCanExecuteChanged();
-            ((RelayCommand)DeleteCommand).NotifyCanExecuteChanged();
         }
 
         /// <summary>

@@ -1,19 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
+﻿#region Directives
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+#endregion
 
 namespace VideoLibraryManager.Model
 {
-    public class CloudVideoFile : INotifyPropertyChanged
+    public class CloudVideoFile : ICloudVideoFile
     {
         #region Constructor
         public CloudVideoFile(string fileName)
         {
             FileName = fileName;
-
         }
         #endregion
 
@@ -43,6 +39,5 @@ namespace VideoLibraryManager.Model
         #region Private Fields
         private string _fileName;
         #endregion
-
     }
 }

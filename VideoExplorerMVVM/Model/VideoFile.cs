@@ -1,12 +1,12 @@
 ﻿#region Directives
-using NAudio.Wave;
 using System.ComponentModel;
 using System.IO;
+using NAudio.Wave;
 #endregion
 
 namespace VideoLibraryManager.Model
 {
-    public class VideoFile : INotifyPropertyChanged
+    public class VideoFile : IVideoFile
     {
         #region Constructor
         public VideoFile(string filePath)
@@ -123,11 +123,6 @@ namespace VideoLibraryManager.Model
         #endregion
 
         #region Private Methods
-        /// <summary>
-        /// Gets the video file duration
-        /// </summary>
-        /// <param name="filePath"></param>
-        /// <returns></returns>
         private TimeSpan GetVideoDuration(string filePath)
         {
             try
@@ -143,14 +138,10 @@ namespace VideoLibraryManager.Model
             }
         }
 
-        /// <summary>
-        /// Returns the file size in MB
-        /// </summary>
-        /// <param name="fileSizeInBytes"></param>
         private double GetFileSizeInMB(long fileSizeInBytes)
         {
             // Convert to MB and round to 2 decimal places
-            return Math.Round(fileSizeInBytes / (1024.0 * 1024.0), 2); 
+            return Math.Round(fileSizeInBytes / (1024.0 * 1024.0), 2);
         }
         #endregion
 
@@ -162,7 +153,6 @@ namespace VideoLibraryManager.Model
         private long _fileSize;
         private TimeSpan _duration;
         private DateTime _dateModified;
-        
         #endregion
     }
 }
