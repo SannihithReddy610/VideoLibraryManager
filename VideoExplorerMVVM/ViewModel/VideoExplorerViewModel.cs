@@ -651,8 +651,7 @@ namespace VideoExplorerMVVM.ViewModel
                 {
                     StatusMessage = "Uploading new version. You will be notified";
                     var filePath = openFileDialog.FileName;
-                    await CopyVideo();
-                    await DeleteCloudFileAsync();
+                    await MoveVideoFile();
                     await UploadVideo(filePath);
                     StatusMessage = "New version uploaded successfully";
                     await LoadCloudVideosAsync();
@@ -700,10 +699,10 @@ namespace VideoExplorerMVVM.ViewModel
         }
 
         /// <summary>
-        /// Copy Video from one folder to other on cloud
+        /// Move Video from one folder to other on cloud
         /// </summary>
         /// <returns></returns>
-        private async Task CopyVideo()
+        private async Task MoveVideoFile()
         {
             try
             {
@@ -717,8 +716,9 @@ namespace VideoExplorerMVVM.ViewModel
                     using (var content = new StreamContent(fileContent))
                     {
                         content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                        _ = await _httpClient.PutAsync(artifactoryUrl + "Versions/" + fileName, content);
+                        _ = await _httpClient.PutAsync(artifactoryVersionUrl + fileName, content);
                     }
+                    _= _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
 
                 }
             }
@@ -727,7 +727,6 @@ namespace VideoExplorerMVVM.ViewModel
                 Show(ex.Message);
             }
         }
-
 
         /// <summary>
         /// Download selected video file from cloud to local.
@@ -775,20 +774,15 @@ namespace VideoExplorerMVVM.ViewModel
                 var response = await _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
                 response.EnsureSuccessStatusCode();
                 StatusMessage = "Video Deleted";
-
-                //var responses = await _httpClient.GetStringAsync(artifactoryUrl + "Versions/");
-
-                //var fileList = ExtractFileNames(responses);
-                //foreach (var file in fileList)
-                //{
-                //    if (file.FileName == fileName)
-                //    {
-                //        CloudSelectedVideo.FileName = fileName;
-                //        artifactoryUrl = artifactoryVersionUrl;
-                //        await DeleteCloudFileAsync();
-                //    }
-                //    artifactoryUrl = artifactoryUrl;
-                //}
+                //Delete previous version of deleted file
+                try
+                {
+                    await _httpClient.DeleteAsync($"{artifactoryVersionUrl}{fileName}");
+                }
+                catch (Exception ex)
+                {
+                   
+                }
                 await LoadCloudVideosAsync();
             }
             catch (Exception ex)
