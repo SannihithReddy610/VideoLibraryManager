@@ -18,7 +18,7 @@ using VideoLibraryManager.Services;
 
 namespace VideoLibraryManager.ViewModel
 {
-    public class VideoManagerViewModel : ViewModelBase
+    public class VideoManagerViewModel : ViewModelBase, IVideoManagerViewModel
     {
         #region Constructor
         public VideoManagerViewModel(ILogger<VideoManagerViewModel> logger)
@@ -247,14 +247,14 @@ namespace VideoLibraryManager.ViewModel
         /// Loads video files asynchronously from specified directories, groups them by folder, 
         /// and updates the Folders collection.
         /// </summary>
-        private async Task LoadVideosAsync()
+        public async Task LoadVideosAsync()
         {
             StatusMessage = "Loading videos...";
             try
             {
                 var videoFiles = await GetVideoFilesAsync(_rootPaths).ConfigureAwait(false);
 
-                Current.Dispatcher.Invoke(() =>
+                await Current.Dispatcher.InvokeAsync(() =>
                 {
                     Folders.Clear();
                     var groupedVideos = videoFiles.GroupBy(v => v.FolderPath);
@@ -285,13 +285,13 @@ namespace VideoLibraryManager.ViewModel
         /// <summary>
         /// Loads the list of video files available in the cloud and updates the UI.
         /// </summary>
-        private async Task LoadCloudVideosAsync()
+        public async Task LoadCloudVideosAsync()
         {
             try
             {
                 var response = await HttpClient.GetStringAsync(_artifactoryUrl);
 
-                Current.Dispatcher.Invoke(() =>
+                await Current.Dispatcher.InvokeAsync(() =>
                 {
                     var fileList = ExtractFileNames(response);
 
@@ -312,7 +312,7 @@ namespace VideoLibraryManager.ViewModel
         /// <summary>
         /// Synchronizes the videos by clearing the current folders and reloading the videos.
         /// </summary>
-        private async Task SyncVideosAsync()
+        public async Task SyncVideosAsync()
         {
             try
             {
@@ -336,7 +336,7 @@ namespace VideoLibraryManager.ViewModel
         /// Otherwise, videos whose filenames contain the search text are displayed.
         /// </summary>
         /// <returns>A Task representing the asynchronous operation.</returns>
-        private async Task FilterVideosAsync()
+        public async Task FilterVideosAsync()
         {
             try
             {
@@ -375,7 +375,7 @@ namespace VideoLibraryManager.ViewModel
                 });
 
                 // Update the FilteredFolders collection on the UI thread
-                Current.Dispatcher.Invoke(() =>
+                await Current.Dispatcher.InvokeAsync(() =>
                 {
                     FilteredFolders = new ObservableCollection<FolderViewModel>(filteredFolders);
                 });
@@ -385,6 +385,7 @@ namespace VideoLibraryManager.ViewModel
                 Show(ex.Message);
             }
         }
+
         #region VideoPlayerService
 
         /// <summary>
