@@ -17,10 +17,10 @@ namespace VideoLibraryManager.View
         /// Initializes a new instance of the <see cref="MainWindow"/> class.
         /// Sets up the DataContext, initializes the Timer, and registers event handlers.
         /// </summary>
-        public MainWindow()
+        public MainWindow(VideoManagerViewModel viewModel)
         {
             InitializeComponent();
-            _viewModel = new VideoManagerViewModel();
+            _viewModel = viewModel;
             SetDataContextAndMediaElement();
             InitializeTimer();
             RegisterEventHandlers();

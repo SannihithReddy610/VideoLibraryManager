@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:VideoLibraryManager"
              xmlns:vm="clr-namespace:VideoLibraryManager.ViewModel"
-             StartupUri="view/MainWindow.xaml">
+             >
     <Application.Resources>
          
     </Application.Resources>

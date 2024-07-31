@@ -12,6 +12,7 @@ using Microsoft.Win32;
 using VideoLibraryManager.Model;
 using static System.Windows.Application;
 using static System.Windows.MessageBox;
+using Microsoft.Extensions.Logging;
 #endregion
 
 namespace VideoLibraryManager.ViewModel
@@ -19,8 +20,9 @@ namespace VideoLibraryManager.ViewModel
     public class VideoManagerViewModel : ViewModelBase
     {
         #region Constructor
-        public VideoManagerViewModel()
+        public VideoManagerViewModel(ILogger<VideoManagerViewModel> logger)
         {
+            _logger = logger;
             LoadVideosCommand = new AsyncRelayCommand(LoadVideosAsync);
             SyncVideosCommand = new AsyncRelayCommand(SyncVideosAsync);
             LoadCloudVideosCommand = new AsyncRelayCommand(LoadCloudVideosAsync);
@@ -250,9 +252,8 @@ namespace VideoLibraryManager.ViewModel
             }
             catch (Exception ex)
             {
-                StatusMessage = $"An error occurred while loading videos: {ex.Message}";
-                // Log the exception or handle it as needed
-                Console.WriteLine($"An error occurred while loading videos: {ex.Message}");
+                StatusMessage = $"An error occurred while loading local videos: {ex.Message}";
+                _logger.LogError(ex, "An error occurred while loading local videos");
             }
             finally
             {
@@ -292,13 +293,13 @@ namespace VideoLibraryManager.ViewModel
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error processing file '{file}': {ex.Message}");
+                            _logger.LogError(ex, $"Error processing file '{file}': {ex.Message}");
                         }
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"The root path '{rootPath}' does not exist.");
+                    _logger.LogError($"The root path '{rootPath}' does not exist.");
                 }
             });
 
@@ -329,7 +330,7 @@ namespace VideoLibraryManager.ViewModel
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error accessing path '{path}': {ex.Message}");
+                _logger.LogError(ex, $"Error accessing path '{path}': {ex.Message}");
             }
         }
 
@@ -346,6 +347,7 @@ namespace VideoLibraryManager.ViewModel
             catch (Exception ex)
             {
                 StatusMessage = $"An error occurred while syncing videos: {ex.Message}";
+                _logger.LogError(ex, $"An error occurred while syncing videos: {ex.Message}");
             }
             finally
             {
@@ -798,7 +800,7 @@ namespace VideoLibraryManager.ViewModel
                 }
                 catch (Exception ex)
                 {
-
+                    _logger.LogError(ex, "Failed to delete file on cloud");
                 }
                 await LoadCloudVideosAsync();
             }
@@ -878,6 +880,7 @@ namespace VideoLibraryManager.ViewModel
         private string artifactoryUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/";
         private string artifactoryVersionUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/Versions/";
         private readonly string? _artifactoryKey;
+        private readonly ILogger<VideoManagerViewModel> _logger;
         #endregion
 
     }

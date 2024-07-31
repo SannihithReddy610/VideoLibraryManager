@@ -15,9 +15,9 @@
     <Window.Resources>
         <local:BindingProxy x:Key="Proxy" Data="{Binding}"/>
     </Window.Resources>
-    <Window.DataContext>
+    <!--<Window.DataContext>
         <vm:VideoManagerViewModel/>
-    </Window.DataContext>
+    </Window.DataContext>-->
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
