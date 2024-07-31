@@ -4,16 +4,16 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Win32;
 using VideoLibraryManager.Model;
 using static System.Windows.Application;
 using static System.Windows.MessageBox;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using VideoLibraryManager.Services;
+
 #endregion
 
 namespace VideoLibraryManager.ViewModel
@@ -24,6 +24,7 @@ namespace VideoLibraryManager.ViewModel
         public VideoManagerViewModel(ILogger<VideoManagerViewModel> logger)
         {
             _logger = logger;
+
             LoadVideosCommand = new AsyncRelayCommand(LoadVideosAsync);
             SyncVideosCommand = new AsyncRelayCommand(SyncVideosAsync);
             LoadCloudVideosCommand = new AsyncRelayCommand(LoadCloudVideosAsync);
@@ -32,24 +33,30 @@ namespace VideoLibraryManager.ViewModel
             UploadNewVersionCommand = new AsyncRelayCommand(UploadNewVersionOfVideo);
             DownloadPreviousVersionCommand = new AsyncRelayCommand(DownloadPreviousVersionOfVideo);
             DownloadFileCommand = new AsyncRelayCommand(DownloadVideo);
-            PlayCommand = new RelayCommand(PlayVideo, CanPlay);
-            PauseCommand = new RelayCommand(Pause, CanPause);
-            StopCommand = new RelayCommand(Stop, CanStop);
+            PlayCommand = new RelayCommand(PlayVideo);
+            PauseCommand = new RelayCommand(Pause);
+            StopCommand = new RelayCommand(Stop);
             RenameCommand = new RelayCommand(RenameVideo);
             DeleteCommand = new RelayCommand(DeleteVideo);
             VideoDoubleClickCommand = new RelayCommand<VideoFile>(PlayVideoOnDoubleClick);
             ToggleFullScreenCommand = new RelayCommand(ToggleFullScreen);
+
             Folders = new ObservableCollection<FolderViewModel>();
             FilteredFolders = new ObservableCollection<FolderViewModel>();
             CloudVideos = new ObservableCollection<CloudVideoFile>();
+
             _artifactoryKey = Environment.GetEnvironmentVariable("JFROG_API_KEY");
-            _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", _artifactoryKey);
-            _configuration = LoadConfiguration();
-            RootPaths = _configuration.GetSection("RootPaths").Get<List<string>>();
-            VideoExtensions = new HashSet<string>(_configuration.GetSection("VideoExtensions").Get<List<string>>());
-            artifactoryVersionUrl = _configuration["ArtifactoryVersionUrl"];
-            artifactoryUrl = _configuration["ArtifactoryUrl"];
+            HttpClient = new HttpClient();
+            HttpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", _artifactoryKey);
+
+            LoadInputConfiguration = LoadConfiguration();
+            _rootPaths = LoadInputConfiguration.GetSection("RootPaths").Get<List<string>>();
+            _videoExtensions = new HashSet<string>(LoadInputConfiguration.GetSection("VideoExtensions").Get<List<string>>());
+            _artifactoryUrl = LoadInputConfiguration["ArtifactoryUrl"];
+
+            _localVideoFileManagementService = new LocalVideoFileManagementService(this);
+            _videoPlayerService = new VideoPlayerService(this);
+            _cloudVideoFileManagementService = new CloudVideoFileManagementService(this);
         }
         #endregion
 
@@ -79,6 +86,8 @@ namespace VideoLibraryManager.ViewModel
                 }
             }
         }
+
+        public HttpClient HttpClient { get; set; }
 
         public CloudVideoFile CloudSelectedVideo
         {
@@ -152,6 +161,8 @@ namespace VideoLibraryManager.ViewModel
             }
         }
 
+        public IConfiguration LoadInputConfiguration { get; set; }
+
         public string SearchText
         {
             get => _searchText;
@@ -179,6 +190,10 @@ namespace VideoLibraryManager.ViewModel
                 }
             }
         }
+
+        public bool IsPlaying { get; set; }
+
+        public bool IsPaused { get; set; }
 
         public ObservableCollection<FolderViewModel> FilteredFolders
         {
@@ -237,7 +252,7 @@ namespace VideoLibraryManager.ViewModel
             StatusMessage = "Loading videos...";
             try
             {
-                var videoFiles = await GetVideoFilesAsync(RootPaths).ConfigureAwait(false);
+                var videoFiles = await GetVideoFilesAsync(_rootPaths).ConfigureAwait(false);
 
                 Current.Dispatcher.Invoke(() =>
                 {
@@ -268,75 +283,29 @@ namespace VideoLibraryManager.ViewModel
         }
 
         /// <summary>
-        /// Retrieves video files asynchronously from a list of root paths, filtering by specific file extensions.
+        /// Loads the list of video files available in the cloud and updates the UI.
         /// </summary>
-        /// <param name="rootPaths">The list of root paths to search for video files.</param>
-        /// <returns>An enumerable collection of video files.</returns>
-        private async Task<IEnumerable<VideoFile>> GetVideoFilesAsync(List<string> rootPaths)
-        {
-            var videoFiles = new ConcurrentBag<VideoFile>();
-
-            var tasks = rootPaths.Select(async rootPath =>
-            {
-                if (Directory.Exists(rootPath))
-                {
-                    var allFiles = new List<string>();
-                    await Task.Run(() => GetFiles(rootPath, allFiles));
-
-                    foreach (var file in allFiles)
-                    {
-                        try
-                        {
-                            if (!string.IsNullOrEmpty(file) && VideoExtensions.Contains(Path.GetExtension(file).ToLower()))
-                            {
-                                videoFiles.Add(new VideoFile(file)
-                                {
-                                    FilePath = file,
-                                    FileName = Path.GetFileName(file),
-                                    FolderPath = Path.GetDirectoryName(file)
-                                });
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, $"Error processing file '{file}': {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    _logger.LogError($"The root path '{rootPath}' does not exist.");
-                }
-            });
-
-            await Task.WhenAll(tasks);
-            return videoFiles;
-        }
-
-        /// <summary>
-        /// Recursively collects all file paths within a given directory and its subdirectories into a provided list.
-        /// </summary>
-        /// <param name="path">The root directory path to search.</param>
-        /// <param name="files">The list to collect file paths.</param>
-        private void GetFiles(string path, List<string> files)
+        private async Task LoadCloudVideosAsync()
         {
             try
             {
-                var fileEntries = Directory.GetFiles(path);
-                lock (files)
-                {
-                    files.AddRange(fileEntries);
-                }
+                var response = await HttpClient.GetStringAsync(_artifactoryUrl);
 
-                var directoryEntries = Directory.GetDirectories(path);
-                Parallel.ForEach(directoryEntries, directory =>
+                Current.Dispatcher.Invoke(() =>
                 {
-                    GetFiles(directory, files);
+                    var fileList = ExtractFileNames(response);
+
+                    CloudVideos.Clear();
+                    foreach (var file in fileList)
+                    {
+                        CloudVideos.Add(file);
+                    }
+                    StatusMessage = "Cloud Videos loaded successfully.";
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error accessing path '{path}': {ex.Message}");
+                Show(ex.Message);
             }
         }
 
@@ -416,6 +385,7 @@ namespace VideoLibraryManager.ViewModel
                 Show(ex.Message);
             }
         }
+        #region VideoPlayerService
 
         /// <summary>
         /// Plays the selected video in the MediaElement control if present, updates playback state variables.
@@ -424,19 +394,7 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                if (_isPaused)
-                {
-                    MediaElement.Play();
-                }
-                else
-                {
-                    MediaElement.Source = new Uri(SelectedVideo.FilePath);
-                    MediaElement.Play();
-                    PlayingVideo = SelectedVideo.FileName;
-                }
-
-                _isPlaying = true;
-                _isPaused = false;
+                _videoPlayerService.PlayVideo();
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -446,15 +404,22 @@ namespace VideoLibraryManager.ViewModel
         }
 
         /// <summary>
+        /// Handles double-click on a video to set the selected video and start playback.
+        /// </summary>
+        /// <param name="videoFile">The video file to play.</param>
+        private void PlayVideoOnDoubleClick(VideoFile videoFile)
+        {
+            _videoPlayerService.PlayVideoOnDoubleClick(videoFile);
+        }
+
+        /// <summary>
         /// Pauses the currently playing video in the MediaElement control and updates playback state variables.
         /// </summary>
         private void Pause()
         {
             try
             {
-                MediaElement.Pause();
-                _isPlaying = false;
-                _isPaused = true;
+                _videoPlayerService.Pause();
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -470,9 +435,7 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                MediaElement.Stop();
-                _isPlaying = false;
-                _isPaused = false;
+                _videoPlayerService.Stop();
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -482,44 +445,24 @@ namespace VideoLibraryManager.ViewModel
         }
 
         /// <summary>
+        /// Toggles the full-screen mode of the application.
+        /// </summary>
+        private void ToggleFullScreen()
+        {
+            _videoPlayerService.ToggleFullScreen();
+        }
+        #endregion
+
+        #region LocalVideoFileManagementService
+        /// <summary>
         /// Renames the selected video file.
         /// </summary>
         private void RenameVideo()
         {
             try
             {
-                // Ask the user for a new file name
-                string newFileName = Microsoft.VisualBasic.Interaction.InputBox("Enter the new name for the video:", "Rename Video", SelectedVideo.FileName);
-
-                if (string.IsNullOrWhiteSpace(newFileName) || newFileName == SelectedVideo.FileName)
-                    return;
-
-                string newFilePath = Path.Combine(Path.GetDirectoryName(SelectedVideo.FilePath), newFileName);
-
-                // Check if the new file name already exists
-                if (File.Exists(newFilePath))
-                {
-                    Show("A file with the new name already exists. Please choose a different name.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                // Rename the file
-                File.Move(SelectedVideo.FilePath, newFilePath);
-
-                // Update the view model
-                SelectedVideo.FilePath = newFilePath;
-                SelectedVideo.FileName = newFileName;
+                _localVideoFileManagementService.RenameVideo();
                 OnPropertyChanged(nameof(FileName));
-                var folder = Folders.FirstOrDefault(f => f.Videos.Contains(SelectedVideo));
-                if (folder != null)
-                {
-                    var video = folder.Videos.FirstOrDefault(v => v.FilePath == newFilePath);
-                    if (video != null)
-                    {
-                        video.FileName = newFileName;
-                    }
-                }
-
             }
             catch (Exception ex)
             {
@@ -534,79 +477,14 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                // Confirm the deletion action with the user
-                MessageBoxResult result = Show($"Are you sure you want to permanently delete '{SelectedVideo.FileName}'?", "Confirm Deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                if (result == MessageBoxResult.Yes)
-                {
-                    // Delete the video file from the file system
-                    if (File.Exists(SelectedVideo.FilePath))
-                    {
-                        File.Delete(SelectedVideo.FilePath);
-                    }
-
-                    // Remove the video file from the view model
-                    var folder = Folders.FirstOrDefault(f => f.Videos.Contains(SelectedVideo));
-                    if (folder != null)
-                    {
-                        folder.Videos.Remove(SelectedVideo);
-                        if (!folder.Videos.Any())
-                        {
-                            Folders.Remove(folder);
-                        }
-                    }
-
-                    // Clear the selected video
-                    SelectedVideo = null;
-                    _ = LoadVideosAsync();
-                }
+                _localVideoFileManagementService.DeleteVideo();
+                OnPropertyChanged(nameof(FileName));
+                _ = LoadVideosAsync();
             }
             catch (Exception ex)
             {
                 Show($"An error occurred while deleting the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        /// <summary>
-        /// Toggles the full-screen mode of the application.
-        /// </summary>
-        private void ToggleFullScreen()
-        {
-            IsFullScreen = !IsFullScreen;
-        }
-
-        /// <summary>
-        /// Determines if the Play command can execute.
-        /// </summary>
-        private bool CanPlay() => !_isPlaying;
-
-        /// <summary>
-        /// Determines if the Pause command can execute.
-        /// </summary>
-        private bool CanPause() => _isPlaying;
-
-        /// <summary>
-        /// Determines if the Stop command can execute.
-        /// </summary>
-        private bool CanStop() => _isPlaying || _isPaused;
-
-        /// <summary>
-        /// Notifies play, pause and stop commands about potential changes in their execution state.
-        /// </summary>
-        private void UpdateCanExecute()
-        {
-            ((RelayCommand)PlayCommand).NotifyCanExecuteChanged();
-            ((RelayCommand)PauseCommand).NotifyCanExecuteChanged();
-            ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
-        }
-
-        /// <summary>
-        /// Handles double-click on a video to set the selected video and start playback.
-        /// </summary>
-        /// <param name="videoFile">The video file to play.</param>
-        private void PlayVideoOnDoubleClick(VideoFile videoFile)
-        {
-            SelectedVideo = videoFile;
-            PlayVideo();
         }
 
         /// <summary>
@@ -616,49 +494,19 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                var filePath = SelectedVideo.FilePath;
-                var fileName = Path.GetFileName(filePath);
                 StatusMessage = "Uploading Video. Status will be notified";
-                using (var content = new StreamContent(File.OpenRead(filePath)))
-                {
-                    content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                    var response = await _httpClient.PutAsync(artifactoryUrl + fileName, content);
-
-                    Show(response.IsSuccessStatusCode
-                        ? $"{fileName} uploaded successfully."
-                        : $"File upload failed. Status code: {response.StatusCode}");
-                    StatusMessage = "";
-                    await LoadCloudVideosAsync();
-                }
+                await _localVideoFileManagementService.UploadVideo();
+                await LoadCloudVideosAsync();
+                StatusMessage = "Video Uploaded Successfully";
             }
             catch (Exception ex)
             {
                 Show(ex.Message);
             }
         }
+        #endregion
 
-        /// <summary>
-        /// Upload video to cloud
-        /// </summary>
-        /// <param name="filePath"></param>
-        private async Task UploadVideo(string filePath)
-        {
-            try
-            {
-                var fileName = Path.GetFileName(filePath);
-                using (var content = new StreamContent(File.OpenRead(filePath)))
-                {
-                    content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                    await _httpClient.PutAsync(artifactoryUrl + CloudSelectedVideo.FileName, content);
-                }
-            }
-            catch (Exception ex)
-            {
-                Show(ex.Message);
-            }
-
-        }
-
+        #region CloudVideoFileManagementService
         /// <summary>
         /// Upload a new version of the video which is on cloud
         /// </summary>
@@ -666,21 +514,9 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                OpenFileDialog openFileDialog = new OpenFileDialog
-                {
-                    Filter = "Video Files|*.mp4;*.avi;*.mov;*.wmv;*.flv;*.mkv"
-                };
-
-                if (openFileDialog.ShowDialog() == true)
-                {
-                    StatusMessage = "Uploading new version. You will be notified";
-                    var filePath = openFileDialog.FileName;
-                    await MoveVideoFile();
-                    await UploadVideo(filePath);
-                    await LoadCloudVideosAsync();
-                    StatusMessage = "New version uploaded successfully";
-                    Show("New version uploaded successfully");
-                }
+                StatusMessage = "Uploading new version. You will be notified";
+                await _cloudVideoFileManagementService.UploadNewVersionOfVideo();
+                StatusMessage = "";
             }
             catch (Exception ex)
             {
@@ -695,57 +531,10 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                var fileName = CloudSelectedVideo.FileName;
-                var versionsFolder = "Versions/";
-                string downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    fileName);
                 StatusMessage = "Downloading Video. Status will be notified";
-                using (var response = await _httpClient.GetAsync($"{artifactoryUrl}{versionsFolder}{fileName}",
-                           HttpCompletionOption.ResponseHeadersRead))
-                {
-                    response.EnsureSuccessStatusCode();
-
-                    using (var fileStream =
-                           new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        await response.Content.CopyToAsync(fileStream);
-                    }
-                    Show(response.IsSuccessStatusCode
-                        ? $"{downloadPath} Downloaded successfully."
-                        : $"File download failed. Status code: {response.StatusCode}");
-                    StatusMessage = "";
-                    await LoadVideosAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Show(ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Move Video from one folder to other on cloud
-        /// </summary>
-        /// <returns></returns>
-        private async Task MoveVideoFile()
-        {
-            try
-            {
-                var fileName = CloudSelectedVideo.FileName;
-                var response = await _httpClient.GetAsync($"{artifactoryUrl}{fileName}",
-                    HttpCompletionOption.ResponseHeadersRead);
-                if (response.IsSuccessStatusCode)
-                {
-                    var fileContent = await response.Content.ReadAsStreamAsync();
-
-                    using (var content = new StreamContent(fileContent))
-                    {
-                        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                        _ = await _httpClient.PutAsync(artifactoryVersionUrl + fileName, content);
-                    }
-                    _ = _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
-
-                }
+                await _cloudVideoFileManagementService.DownloadPreviousVersionOfVideo();
+                await LoadVideosAsync();
+                StatusMessage = "Video Downloaded successfully.";
             }
             catch (Exception ex)
             {
@@ -760,26 +549,11 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                var fileName = CloudSelectedVideo.FileName;
-                string downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    fileName);
                 StatusMessage = "Downloading Video. Status will be notified";
-                using (var response = await _httpClient.GetAsync($"{artifactoryUrl}{fileName}",
-                           HttpCompletionOption.ResponseHeadersRead))
-                {
-                    response.EnsureSuccessStatusCode();
+                await _cloudVideoFileManagementService.DownloadVideo();
+                await LoadVideosAsync();
+                StatusMessage = "Downloaded Video Successfully";
 
-                    using (var fileStream =
-                           new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        await response.Content.CopyToAsync(fileStream);
-                    }
-                    Show(response.IsSuccessStatusCode
-                        ? $"{downloadPath} Downloaded successfully."
-                        : $"File download failed. Status code: {response.StatusCode}");
-                    StatusMessage = "";
-                    await LoadVideosAsync();
-                }
             }
             catch (Exception ex)
             {
@@ -794,53 +568,99 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                var fileName = CloudSelectedVideo.FileName;
                 StatusMessage = "Deleting Video. Status will be notified";
-                var response = await _httpClient.DeleteAsync($"{artifactoryUrl}{fileName}");
-                response.EnsureSuccessStatusCode();
-                StatusMessage = "Video Deleted";
-                //Delete previous version of deleted file
-                try
-                {
-                    await _httpClient.DeleteAsync($"{artifactoryVersionUrl}{fileName}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to delete file on cloud");
-                }
+                _cloudVideoFileManagementService.DeleteCloudFileAsync();
                 await LoadCloudVideosAsync();
+                StatusMessage = "Video Deleted Successfully.";
             }
             catch (Exception ex)
             {
                 Show(ex.Message);
             }
         }
+        #endregion
 
         /// <summary>
-        /// Loads the list of video files available in the cloud and updates the UI.
+        /// Retrieves video files asynchronously from a list of root paths, filtering by specific file extensions.
         /// </summary>
-        private async Task LoadCloudVideosAsync()
+        /// <param name="rootPaths">The list of root paths to search for video files.</param>
+        /// <returns>An enumerable collection of video files.</returns>
+        private async Task<IEnumerable<VideoFile>> GetVideoFilesAsync(List<string>? rootPaths)
+        {
+            var videoFiles = new ConcurrentBag<VideoFile>();
+
+            var tasks = rootPaths.Select(async rootPath =>
+            {
+                if (Directory.Exists(rootPath))
+                {
+                    var allFiles = new List<string>();
+                    await Task.Run(() => GetFiles(rootPath, allFiles));
+
+                    foreach (var file in allFiles)
+                    {
+                        try
+                        {
+                            if (!string.IsNullOrEmpty(file) && _videoExtensions.Contains(Path.GetExtension(file).ToLower()))
+                            {
+                                videoFiles.Add(new VideoFile(file)
+                                {
+                                    FilePath = file,
+                                    FileName = Path.GetFileName(file),
+                                    FolderPath = Path.GetDirectoryName(file)
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error processing file '{file}': {ex.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogError($"The root path '{rootPath}' does not exist.");
+                }
+            });
+
+            await Task.WhenAll(tasks);
+            return videoFiles;
+        }
+
+        /// <summary>
+        /// Recursively collects all file paths within a given directory and its subdirectories into a provided list.
+        /// </summary>
+        /// <param name="path">The root directory path to search.</param>
+        /// <param name="files">The list to collect file paths.</param>
+        private void GetFiles(string path, List<string> files)
         {
             try
             {
-                var response = await _httpClient.GetStringAsync(artifactoryUrl);
-
-                Current.Dispatcher.Invoke(() =>
+                var fileEntries = Directory.GetFiles(path);
+                lock (files)
                 {
-                    var fileList = ExtractFileNames(response);
+                    files.AddRange(fileEntries);
+                }
 
-                    CloudVideos.Clear();
-                    foreach (var file in fileList)
-                    {
-                        CloudVideos.Add(file);
-                    }
-                    StatusMessage = "Cloud Videos loaded successfully.";
+                var directoryEntries = Directory.GetDirectories(path);
+                Parallel.ForEach(directoryEntries, directory =>
+                {
+                    GetFiles(directory, files);
                 });
             }
             catch (Exception ex)
             {
-                Show(ex.Message);
+                _logger.LogError(ex, $"Error accessing path '{path}': {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Notifies play, pause and stop commands about potential changes in their execution state.
+        /// </summary>
+        private void UpdateCanExecute()
+        {
+            ((RelayCommand)PlayCommand).NotifyCanExecuteChanged();
+            ((RelayCommand)PauseCommand).NotifyCanExecuteChanged();
+            ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
         }
 
         /// <summary>
@@ -865,6 +685,9 @@ namespace VideoLibraryManager.ViewModel
             return cloudFileNames;
         }
 
+        /// <summary>
+        /// Loads configuration to read data from Json file
+        /// </summary>
         private IConfiguration LoadConfiguration()
         {
             var builder = new ConfigurationBuilder()
@@ -876,8 +699,7 @@ namespace VideoLibraryManager.ViewModel
         #endregion
 
         #region Private Fields
-        private bool _isPlaying;
-        private bool _isPaused;
+
         private bool _isFullScreen;
         private double _seekBarValue;
         private string _videoDuration;
@@ -889,14 +711,15 @@ namespace VideoLibraryManager.ViewModel
         private CloudVideoFile _cloudSelectedVideo;
         private MediaElement _mediaElement;
         private ObservableCollection<FolderViewModel> _filteredFolders;
-        private readonly HttpClient _httpClient;
-        private IConfiguration _configuration;
-        private readonly List<string> RootPaths;
-        private readonly HashSet<string> VideoExtensions;
-        private readonly string artifactoryUrl;
-        private readonly string artifactoryVersionUrl;
+        private readonly List<string>? _rootPaths;
+        private readonly HashSet<string> _videoExtensions;
+        private readonly string? _artifactoryUrl;
         private readonly string? _artifactoryKey;
         private readonly ILogger<VideoManagerViewModel> _logger;
+        private readonly ILocalVideoFileManagementService _localVideoFileManagementService;
+        private readonly IVideoPlayerService _videoPlayerService;
+        private readonly ICloudVideoFileManagementService _cloudVideoFileManagementService;
+
         #endregion
 
     }
