@@ -13,6 +13,7 @@ using VideoLibraryManager.Model;
 using static System.Windows.Application;
 using static System.Windows.MessageBox;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 #endregion
 
 namespace VideoLibraryManager.ViewModel
@@ -44,6 +45,11 @@ namespace VideoLibraryManager.ViewModel
             _artifactoryKey = Environment.GetEnvironmentVariable("JFROG_API_KEY");
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", _artifactoryKey);
+            _configuration = LoadConfiguration();
+            RootPaths = _configuration.GetSection("RootPaths").Get<List<string>>();
+            VideoExtensions = new HashSet<string>(_configuration.GetSection("VideoExtensions").Get<List<string>>());
+            artifactoryVersionUrl = _configuration["ArtifactoryVersionUrl"];
+            artifactoryUrl = _configuration["ArtifactoryUrl"];
         }
         #endregion
 
@@ -858,6 +864,15 @@ namespace VideoLibraryManager.ViewModel
             }
             return cloudFileNames;
         }
+
+        private IConfiguration LoadConfiguration()
+        {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+            return builder.Build();
+        }
         #endregion
 
         #region Private Fields
@@ -874,11 +889,12 @@ namespace VideoLibraryManager.ViewModel
         private CloudVideoFile _cloudSelectedVideo;
         private MediaElement _mediaElement;
         private ObservableCollection<FolderViewModel> _filteredFolders;
-        private HttpClient _httpClient;
-        private static readonly List<string> RootPaths = ["C:\\Users", "D:\\", "G:\\"];
-        private static readonly HashSet<string> VideoExtensions = [".mp4", ".avi", ".mkv"];
-        private string artifactoryUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/";
-        private string artifactoryVersionUrl = "https://backupvideos.jfrog.io/artifactory/BackupVideos/Versions/";
+        private readonly HttpClient _httpClient;
+        private IConfiguration _configuration;
+        private readonly List<string> RootPaths;
+        private readonly HashSet<string> VideoExtensions;
+        private readonly string artifactoryUrl;
+        private readonly string artifactoryVersionUrl;
         private readonly string? _artifactoryKey;
         private readonly ILogger<VideoManagerViewModel> _logger;
         #endregion
