@@ -1,65 +1,43 @@
-﻿using VideoLibraryManager.Model;
+﻿using System.Windows.Controls;
+using VideoLibraryManager.Model;
 using VideoLibraryManager.ViewModel;
 
 namespace VideoLibraryManager.Services
 {
-    public class VideoPlayerService(VideoManagerViewModel videoManagerViewModel) : IVideoPlayerService
+    public class VideoPlayerService : IVideoPlayerService
     {
         /// <summary>
         /// Plays the selected video. If the video is paused, it resumes playback.
         /// Otherwise, it starts playing from the beginning.
         /// </summary>
-        public void PlayVideo()
+        public void PlayVideo(bool isPaused, MediaElement mediaElement, string filePath)
         {
-            if (videoManagerViewModel.IsPaused)
+            if (isPaused)
             {
-                videoManagerViewModel.MediaElement.Play();
+                mediaElement.Play();
             }
             else
             {
-                videoManagerViewModel.MediaElement.Source = new Uri(videoManagerViewModel.SelectedVideo.FilePath);
-                videoManagerViewModel.MediaElement.Play();
-                videoManagerViewModel.PlayingVideo = videoManagerViewModel.SelectedVideo.FileName;
+                mediaElement.Source = new Uri(filePath);
+                mediaElement.Play();
             }
-
-            videoManagerViewModel.IsPaused = false;
-            
-        }
-
-        /// <summary>
-        /// Plays the specified video when it is double-clicked.
-        /// </summary>
-        /// <param name="videoFile">The video file to play.</param>
-        public void PlayVideoOnDoubleClick(VideoFile videoFile)
-        {
-            videoManagerViewModel.SelectedVideo = videoFile;
-            PlayVideo();
         }
 
         /// <summary>
         /// Pauses the currently playing video.
         /// </summary>
 
-        public void Pause()
+        public void Pause(MediaElement mediaElement)
         {
-            videoManagerViewModel.MediaElement.Pause();
-            videoManagerViewModel.IsPaused = true;
+            mediaElement.Pause();
         }
 
         /// <summary>
         /// Stops the currently playing video.
         /// </summary>
-        public void Stop()
+        public void Stop(MediaElement mediaElement)
         {
-            videoManagerViewModel.MediaElement.Stop();
-        }
-
-        /// <summary>
-        /// Toggles the full-screen mode for the video player.
-        /// </summary>
-        public void ToggleFullScreen()
-        {
-            videoManagerViewModel.IsFullScreen = !videoManagerViewModel.IsFullScreen;
+            mediaElement.Stop();
         }
     }
 }

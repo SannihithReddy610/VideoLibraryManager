@@ -34,7 +34,7 @@ namespace VideoLibraryManager.View
         private void SetDataContextAndMediaElement()
         {
             DataContext = _viewModel;
-            _viewModel.MediaElement = mediaElement;
+            _viewModel.MediaElement = MediaElement;
         }
 
         /// <summary>
@@ -56,8 +56,8 @@ namespace VideoLibraryManager.View
         {
             DataContextChanged += MainWindow_DataContextChanged;
             Loaded += MainWindow_Loaded;
-            mediaElement.MediaOpened += MediaElement_MediaOpened;
-            mediaElement.MediaEnded += MediaElement_MediaEnded;
+            MediaElement.MediaOpened += MediaElement_MediaOpened;
+            MediaElement.MediaEnded += MediaElement_MediaEnded;
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
         }
@@ -91,7 +91,7 @@ namespace VideoLibraryManager.View
             if (e.NewValue is VideoManagerViewModel newViewModel)
             {
                 newViewModel.PropertyChanged += ViewModel_PropertyChanged;
-                newViewModel.MediaElement = mediaElement;
+                newViewModel.MediaElement = MediaElement;
             }
         }
 
@@ -144,9 +144,9 @@ namespace VideoLibraryManager.View
         /// <param name="e">The event arguments.</param>
         private void MediaElement_MediaOpened(object sender, RoutedEventArgs e)
         {
-            if (mediaElement.NaturalDuration.HasTimeSpan)
+            if (MediaElement.NaturalDuration.HasTimeSpan)
             {
-                seekBar.Maximum = mediaElement.NaturalDuration.TimeSpan.TotalSeconds;
+                seekBar.Maximum = MediaElement.NaturalDuration.TimeSpan.TotalSeconds;
                 _timer.Start();
             }
         }
@@ -171,9 +171,9 @@ namespace VideoLibraryManager.View
         /// <param name="e">The event arguments containing the new value of the seek bar.</param>
         private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (mediaElement != null && Math.Abs(mediaElement.Position.TotalSeconds - seekBar.Value) > 1)
+            if (MediaElement != null && Math.Abs(MediaElement.Position.TotalSeconds - seekBar.Value) > 1)
             {
-                mediaElement.Position = TimeSpan.FromSeconds(seekBar.Value);
+                MediaElement.Position = TimeSpan.FromSeconds(seekBar.Value);
             }
         }
 
@@ -185,9 +185,9 @@ namespace VideoLibraryManager.View
         /// <param name="e">The event arguments containing the new value of the volume slider.</param>
         private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (mediaElement != null)
+            if (MediaElement != null)
             {
-                mediaElement.Volume = VolumeSlider.Value;
+                MediaElement.Volume = VolumeSlider.Value;
             }
         }
 
@@ -200,10 +200,10 @@ namespace VideoLibraryManager.View
         private void Timer_Tick(object sender, EventArgs e)
         {
             var viewModel = DataContext as VideoManagerViewModel;
-            if (viewModel != null && mediaElement.Source != null && mediaElement.NaturalDuration.HasTimeSpan)
+            if (viewModel != null && MediaElement.Source != null && MediaElement.NaturalDuration.HasTimeSpan)
             {
-                viewModel.SeekBarValue = mediaElement.Position.TotalSeconds;
-                viewModel.VideoDuration = mediaElement.Position.ToString(@"hh\:mm\:ss") + " / " + mediaElement.NaturalDuration.TimeSpan.ToString(@"hh\:mm\:ss");
+                viewModel.SeekBarValue = MediaElement.Position.TotalSeconds;
+                viewModel.VideoDuration = MediaElement.Position.ToString(@"hh\:mm\:ss") + " / " + MediaElement.NaturalDuration.TimeSpan.ToString(@"hh\:mm\:ss");
             }
         }
 
@@ -220,8 +220,8 @@ namespace VideoLibraryManager.View
             this.WindowStyle = WindowStyle.None;
             this.ResizeMode = ResizeMode.NoResize;
 
-            mediaElement.Width = SystemParameters.PrimaryScreenWidth;
-            mediaElement.Height = SystemParameters.PrimaryScreenHeight;
+            MediaElement.Width = SystemParameters.PrimaryScreenWidth;
+            MediaElement.Height = SystemParameters.PrimaryScreenHeight;
             _isFullScreen = true;
 
             this.KeyDown += FullScreen_KeyDown;
@@ -236,8 +236,8 @@ namespace VideoLibraryManager.View
             this.WindowStyle = _previousWindowStyle;
             this.ResizeMode = _previousResizeMode;
 
-            mediaElement.Width = double.NaN; 
-            mediaElement.Height = double.NaN; 
+            MediaElement.Width = double.NaN;
+            MediaElement.Height = double.NaN; 
             _isFullScreen = false;
 
             this.KeyDown -= FullScreen_KeyDown;

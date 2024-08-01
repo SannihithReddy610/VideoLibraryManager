@@ -13,15 +13,21 @@ using static System.Windows.MessageBox;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using VideoLibraryManager.Services;
+using VideoLibraryManager.Helper;
 
 #endregion
 
 namespace VideoLibraryManager.ViewModel
 {
-    public class VideoManagerViewModel : ViewModelBase, IVideoManagerViewModel
+    public class VideoManagerViewModel : ViewModelBase
     {
         #region Constructor
-        public VideoManagerViewModel(ILogger<VideoManagerViewModel> logger)
+        public VideoManagerViewModel(ILogger<VideoManagerViewModel> logger) : this(new CloudVideoFileManagementService(), new LocalVideoFileManagementService(logger), new VideoPlayerService(), logger)
+        {
+            
+        }
+
+        public VideoManagerViewModel(ICloudVideoFileManagementService cloudVideoFileManagementService, ILocalVideoFileManagementService localVideoFileManagementService, IVideoPlayerService videoPlayerService, ILogger logger)
         {
             _logger = logger;
 
@@ -54,9 +60,9 @@ namespace VideoLibraryManager.ViewModel
             _videoExtensions = new HashSet<string>(LoadInputConfiguration.GetSection("VideoExtensions").Get<List<string>>());
             _artifactoryUrl = LoadInputConfiguration["ArtifactoryUrl"];
 
-            _localVideoFileManagementService = new LocalVideoFileManagementService(this);
-            _videoPlayerService = new VideoPlayerService(this);
-            _cloudVideoFileManagementService = new CloudVideoFileManagementService(this);
+            _localVideoFileManagementService = localVideoFileManagementService;
+            _cloudVideoFileManagementService = cloudVideoFileManagementService;
+            _videoPlayerService = videoPlayerService;
         }
         #endregion
 
@@ -252,7 +258,7 @@ namespace VideoLibraryManager.ViewModel
             StatusMessage = "Loading videos...";
             try
             {
-                var videoFiles = await GetVideoFilesAsync(_rootPaths).ConfigureAwait(false);
+                var videoFiles = await _localVideoFileManagementService.LoadVideosAsync();
 
                 await Current.Dispatcher.InvokeAsync(() =>
                 {
@@ -289,7 +295,7 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                var response = await HttpClient.GetStringAsync(_artifactoryUrl);
+                var response = await _cloudVideoFileManagementService.LoadCloudVideosAsync();
 
                 await Current.Dispatcher.InvokeAsync(() =>
                 {
@@ -395,7 +401,9 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                _videoPlayerService.PlayVideo();
+                _videoPlayerService.PlayVideo(IsPaused, MediaElement, SelectedVideo.FilePath);
+                PlayingVideo = SelectedVideo.FileName;
+                IsPaused = false;
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -410,7 +418,8 @@ namespace VideoLibraryManager.ViewModel
         /// <param name="videoFile">The video file to play.</param>
         private void PlayVideoOnDoubleClick(VideoFile videoFile)
         {
-            _videoPlayerService.PlayVideoOnDoubleClick(videoFile);
+            SelectedVideo = videoFile;
+            PlayVideo();
         }
 
         /// <summary>
@@ -420,7 +429,8 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                _videoPlayerService.Pause();
+                _videoPlayerService.Pause(MediaElement);
+                IsPaused = true;
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -436,7 +446,7 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                _videoPlayerService.Stop();
+                _videoPlayerService.Stop(MediaElement);
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -450,7 +460,7 @@ namespace VideoLibraryManager.ViewModel
         /// </summary>
         private void ToggleFullScreen()
         {
-            _videoPlayerService.ToggleFullScreen();
+            IsFullScreen = !IsFullScreen;
         }
         #endregion
 
@@ -462,8 +472,23 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                _localVideoFileManagementService.RenameVideo();
-                OnPropertyChanged(nameof(FileName));
+                string newFileName = Microsoft.VisualBasic.Interaction.InputBox("Enter the new name for the video:", "Rename Video", SelectedVideo.FileName);
+                var newFilePath = _localVideoFileManagementService.RenameVideo(SelectedVideo.FileName, SelectedVideo.FilePath, newFileName);
+                if (newFilePath != string.Empty)
+                {
+                    SelectedVideo.FilePath = newFilePath;
+                    SelectedVideo.FileName = newFileName;
+                    var folder = Folders.FirstOrDefault(f => f.Videos.Contains(SelectedVideo));
+                    if (folder != null)
+                    {
+                        var video = folder.Videos.FirstOrDefault(v => v.FilePath == newFilePath);
+                        if (video != null)
+                        {
+                            video.FileName = newFileName;
+                        }
+                    }
+                    OnPropertyChanged(nameof(FileName));
+                }
             }
             catch (Exception ex)
             {
@@ -478,9 +503,29 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                _localVideoFileManagementService.DeleteVideo();
-                OnPropertyChanged(nameof(FileName));
-                _ = LoadVideosAsync();
+                MessageBoxResult result = Show($"Are you sure you want to permanently delete '{SelectedVideo.FileName}'?",
+                    "Confirm Deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    StatusMessage = "Deleting Video. Status will be notified";
+                    _localVideoFileManagementService.DeleteVideo(SelectedVideo.FilePath);
+                    var folder = Folders.FirstOrDefault(f => f.Videos.Contains(SelectedVideo));
+                    if (folder != null)
+                    {
+                        folder.Videos.Remove(SelectedVideo);
+                        if (!folder.Videos.Any())
+                        {
+                            Folders.Remove(folder);
+                        }
+                    }
+
+                    // Clear the selected video
+                    SelectedVideo = null;
+                    OnPropertyChanged(nameof(FileName));
+                    _ = LoadVideosAsync();
+                    StatusMessage = "Video deleted successfully.";
+                }
+                
             }
             catch (Exception ex)
             {
@@ -496,9 +541,17 @@ namespace VideoLibraryManager.ViewModel
             try
             {
                 StatusMessage = "Uploading Video. Status will be notified";
-                await _localVideoFileManagementService.UploadVideo();
-                await LoadCloudVideosAsync();
-                StatusMessage = "Video Uploaded Successfully";
+                var response = await _cloudVideoFileManagementService.UploadVideo(SelectedVideo.FilePath);
+                if (response.IsSuccessStatusCode)
+                {
+                    Show($"{Path.GetFileName(SelectedVideo.FilePath)} uploaded successfully.");
+                    await LoadCloudVideosAsync();
+                    StatusMessage = "Video Uploaded Successfully";
+                }
+                else
+                {
+                    Show($"File upload failed. Status code: {response.StatusCode}");
+                }
             }
             catch (Exception ex)
             {
@@ -516,7 +569,7 @@ namespace VideoLibraryManager.ViewModel
             try
             {
                 StatusMessage = "Uploading new version. You will be notified";
-                await _cloudVideoFileManagementService.UploadNewVersionOfVideo();
+                await _cloudVideoFileManagementService.UploadNewVersionOfVideo(CloudSelectedVideo.FileName);
                 StatusMessage = "";
             }
             catch (Exception ex)
@@ -533,7 +586,7 @@ namespace VideoLibraryManager.ViewModel
             try
             {
                 StatusMessage = "Downloading Video. Status will be notified";
-                await _cloudVideoFileManagementService.DownloadPreviousVersionOfVideo();
+                await _cloudVideoFileManagementService.DownloadPreviousVersionOfVideo(CloudSelectedVideo.FileName);
                 await LoadVideosAsync();
                 StatusMessage = "Video Downloaded successfully.";
             }
@@ -551,7 +604,7 @@ namespace VideoLibraryManager.ViewModel
             try
             {
                 StatusMessage = "Downloading Video. Status will be notified";
-                await _cloudVideoFileManagementService.DownloadVideo();
+                await _cloudVideoFileManagementService.DownloadVideo(CloudSelectedVideo.FileName);
                 await LoadVideosAsync();
                 StatusMessage = "Downloaded Video Successfully";
 
@@ -570,7 +623,7 @@ namespace VideoLibraryManager.ViewModel
             try
             {
                 StatusMessage = "Deleting Video. Status will be notified";
-                _cloudVideoFileManagementService.DeleteCloudFileAsync();
+                await _cloudVideoFileManagementService.DeleteCloudFileAsync(CloudSelectedVideo.FileName);
                 await LoadCloudVideosAsync();
                 StatusMessage = "Video Deleted Successfully.";
             }
@@ -581,78 +634,6 @@ namespace VideoLibraryManager.ViewModel
         }
         #endregion
 
-        /// <summary>
-        /// Retrieves video files asynchronously from a list of root paths, filtering by specific file extensions.
-        /// </summary>
-        /// <param name="rootPaths">The list of root paths to search for video files.</param>
-        /// <returns>An enumerable collection of video files.</returns>
-        private async Task<IEnumerable<VideoFile>> GetVideoFilesAsync(List<string>? rootPaths)
-        {
-            var videoFiles = new ConcurrentBag<VideoFile>();
-
-            var tasks = rootPaths.Select(async rootPath =>
-            {
-                if (Directory.Exists(rootPath))
-                {
-                    var allFiles = new List<string>();
-                    await Task.Run(() => GetFiles(rootPath, allFiles));
-
-                    foreach (var file in allFiles)
-                    {
-                        try
-                        {
-                            if (!string.IsNullOrEmpty(file) && _videoExtensions.Contains(Path.GetExtension(file).ToLower()))
-                            {
-                                videoFiles.Add(new VideoFile(file)
-                                {
-                                    FilePath = file,
-                                    FileName = Path.GetFileName(file),
-                                    FolderPath = Path.GetDirectoryName(file)
-                                });
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, $"Error processing file '{file}': {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    _logger.LogError($"The root path '{rootPath}' does not exist.");
-                }
-            });
-
-            await Task.WhenAll(tasks);
-            return videoFiles;
-        }
-
-        /// <summary>
-        /// Recursively collects all file paths within a given directory and its subdirectories into a provided list.
-        /// </summary>
-        /// <param name="path">The root directory path to search.</param>
-        /// <param name="files">The list to collect file paths.</param>
-        private void GetFiles(string path, List<string> files)
-        {
-            try
-            {
-                var fileEntries = Directory.GetFiles(path);
-                lock (files)
-                {
-                    files.AddRange(fileEntries);
-                }
-
-                var directoryEntries = Directory.GetDirectories(path);
-                Parallel.ForEach(directoryEntries, directory =>
-                {
-                    GetFiles(directory, files);
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error accessing path '{path}': {ex.Message}");
-            }
-        }
 
         /// <summary>
         /// Notifies play, pause and stop commands about potential changes in their execution state.
@@ -716,10 +697,11 @@ namespace VideoLibraryManager.ViewModel
         private readonly HashSet<string> _videoExtensions;
         private readonly string? _artifactoryUrl;
         private readonly string? _artifactoryKey;
-        private readonly ILogger<VideoManagerViewModel> _logger;
+        private readonly ILogger _logger;
         private readonly ILocalVideoFileManagementService _localVideoFileManagementService;
         private readonly IVideoPlayerService _videoPlayerService;
         private readonly ICloudVideoFileManagementService _cloudVideoFileManagementService;
+        private readonly IDirectoryHelper _directoryHelper;
 
         #endregion
 

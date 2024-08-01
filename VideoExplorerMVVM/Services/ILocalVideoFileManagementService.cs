@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VideoLibraryManager.Model;
 
 namespace VideoLibraryManager.Services
 {
     public interface ILocalVideoFileManagementService
     {
-        void RenameVideo();
-        void DeleteVideo();
-        Task UploadVideo();
+        Task<IEnumerable<VideoFile>> LoadVideosAsync();
+        string RenameVideo(string fileName, string filePath, string newFileName);
+        void DeleteVideo(string filePath);
     }
 }

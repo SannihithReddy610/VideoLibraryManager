@@ -1,103 +1,152 @@
-﻿using System.IO;
+﻿using System.Collections.Concurrent;
+using System.IO;
 using System.Windows;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using VideoLibraryManager.ViewModel;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using VideoLibraryManager.Model;
 using static System.Windows.MessageBox;
 
 namespace VideoLibraryManager.Services
 {
-    public class LocalVideoFileManagementService(VideoManagerViewModel videoManagerViewModel)
-        : ILocalVideoFileManagementService
+    public class LocalVideoFileManagementService : ILocalVideoFileManagementService
     {
+        private readonly ILogger _logger;
+        private readonly IConfiguration _loadInputConfiguration;
+        private readonly List<string>? _rootPaths;
+        private readonly HashSet<string> _videoExtensions;
+        
+        public LocalVideoFileManagementService(ILogger logger)
+        {
+            _logger = logger;
+            _loadInputConfiguration = LoadConfiguration();
+            _rootPaths = _loadInputConfiguration.GetSection("RootPaths").Get<List<string>>();
+            _videoExtensions = new HashSet<string>(_loadInputConfiguration.GetSection("VideoExtensions").Get<List<string>>());
+        }
+        public async Task<IEnumerable<VideoFile>> LoadVideosAsync()
+        {
+            return await GetVideoFilesAsync(_rootPaths).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Retrieves video files asynchronously from a list of root paths, filtering by specific file extensions.
+        /// </summary>
+        /// <param name="rootPaths">The list of root paths to search for video files.</param>
+        /// <returns>An enumerable collection of video files.</returns>
+        private async Task<IEnumerable<VideoFile>> GetVideoFilesAsync(List<string>? rootPaths)
+        {
+            var videoFiles = new ConcurrentBag<VideoFile>();
+
+            var tasks = rootPaths.Select(async rootPath =>
+            {
+                if (Directory.Exists(rootPath))
+                {
+                    var allFiles = new List<string>();
+                    await Task.Run(() => GetFiles(rootPath, allFiles));
+
+                    foreach (var file in allFiles)
+                    {
+                        try
+                        {
+                            if (!string.IsNullOrEmpty(file) && _videoExtensions.Contains(Path.GetExtension(file).ToLower()))
+                            {
+                                videoFiles.Add(new VideoFile(file)
+                                {
+                                    FilePath = file,
+                                    FileName = Path.GetFileName(file),
+                                    FolderPath = Path.GetDirectoryName(file)
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error processing file '{file}': {ex.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogError($"The root path '{rootPath}' does not exist.");
+                }
+            });
+
+            await Task.WhenAll(tasks);
+            return videoFiles;
+        }
+
+        /// <summary>
+        /// Recursively collects all file paths within a given directory and its subdirectories into a provided list.
+        /// </summary>
+        /// <param name="path">The root directory path to search.</param>
+        /// <param name="files">The list to collect file paths.</param>
+        private void GetFiles(string path, List<string> files)
+        {
+            try
+            {
+                var fileEntries = Directory.GetFiles(path);
+                lock (files)
+                {
+                    files.AddRange(fileEntries);
+                }
+
+                var directoryEntries = Directory.GetDirectories(path);
+                Parallel.ForEach(directoryEntries, directory =>
+                {
+                    GetFiles(directory, files);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error accessing path '{path}': {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// Renames the selected video file.
         /// </summary>
-        public void RenameVideo()
+        public string RenameVideo(string fileName, string filePath, string newFileName)
         {
-            // Ask the user for a new file name
-            string newFileName = Microsoft.VisualBasic.Interaction.InputBox("Enter the new name for the video:", "Rename Video", videoManagerViewModel.SelectedVideo.FileName);
+            if (string.IsNullOrWhiteSpace(newFileName) || newFileName == fileName)
+                return filePath;
 
-            if (string.IsNullOrWhiteSpace(newFileName) || newFileName == videoManagerViewModel.SelectedVideo.FileName)
-                return;
-
-            string newFilePath = Path.Combine(Path.GetDirectoryName(videoManagerViewModel.SelectedVideo.FilePath), newFileName);
+            string newFilePath = Path.Combine(Path.GetDirectoryName(filePath), newFileName);
 
             // Check if the new file name already exists
             if (File.Exists(newFilePath))
             {
                 Show("A file with the new name already exists. Please choose a different name.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                return "";
             }
 
             // Rename the file
-            File.Move(videoManagerViewModel.SelectedVideo.FilePath, newFilePath);
+            File.Move(filePath, newFilePath);
 
-            // Update the view model
-            videoManagerViewModel.SelectedVideo.FilePath = newFilePath;
-            videoManagerViewModel.SelectedVideo.FileName = newFileName;
-            
-            var folder = videoManagerViewModel.Folders.FirstOrDefault(f => f.Videos.Contains(videoManagerViewModel.SelectedVideo));
-            if (folder != null)
-            {
-                var video = folder.Videos.FirstOrDefault(v => v.FilePath == newFilePath);
-                if (video != null)
-                {
-                    video.FileName = newFileName;
-                }
-            }
+            return newFilePath;
+
         }
 
         /// <summary>
         /// Deletes the selected video file.
         /// </summary>
-        public void DeleteVideo()
+        public void DeleteVideo(string filePath)
         {
-            MessageBoxResult result = Show($"Are you sure you want to permanently delete '{videoManagerViewModel.SelectedVideo.FileName}'?",
-                "Confirm Deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result == MessageBoxResult.Yes)
+
+            if (File.Exists(filePath))
             {
-                // Delete the video file from the file system
-                if (File.Exists(videoManagerViewModel.SelectedVideo.FilePath))
-                {
-                    File.Delete(videoManagerViewModel.SelectedVideo.FilePath);
-                }
-
-                // Remove the video file from the view model
-                var folder = videoManagerViewModel.Folders.FirstOrDefault(f => f.Videos.Contains(videoManagerViewModel.SelectedVideo));
-                if (folder != null)
-                {
-                    folder.Videos.Remove(videoManagerViewModel.SelectedVideo);
-                    if (!folder.Videos.Any())
-                    {
-                        videoManagerViewModel.Folders.Remove(folder);
-                    }
-                }
-
-                // Clear the selected video
-                videoManagerViewModel.SelectedVideo = null;
+                File.Delete(filePath);
             }
+
         }
 
         /// <summary>
-        /// Uploads the selected video file to the cloud.
+        /// Loads configuration to read data from Json file
         /// </summary>
-        public async Task UploadVideo()
+        private IConfiguration LoadConfiguration()
         {
-            var filePath = videoManagerViewModel.SelectedVideo.FilePath;
-            var fileName = Path.GetFileName(filePath);
-            var configuration = videoManagerViewModel.LoadInputConfiguration;
-            var artifactoryUrl = configuration["ArtifactoryUrl"];
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
-            using (var content = new StreamContent(File.OpenRead(filePath)))
-            {
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                var response = await videoManagerViewModel.HttpClient.PutAsync(artifactoryUrl + fileName, content);
-
-                Show(response.IsSuccessStatusCode
-                    ? $"{fileName} uploaded successfully."
-                    : $"File upload failed. Status code: {response.StatusCode}");
-            }
+            return builder.Build();
         }
     }
 }
