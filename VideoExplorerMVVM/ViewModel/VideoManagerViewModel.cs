@@ -1,6 +1,5 @@
 ﻿#region Directives
 using CommunityToolkit.Mvvm.Input;
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
@@ -50,15 +49,6 @@ namespace VideoLibraryManager.ViewModel
             Folders = new ObservableCollection<FolderViewModel>();
             FilteredFolders = new ObservableCollection<FolderViewModel>();
             CloudVideos = new ObservableCollection<CloudVideoFile>();
-
-            _artifactoryKey = Environment.GetEnvironmentVariable("JFROG_API_KEY");
-            HttpClient = new HttpClient();
-            HttpClient.DefaultRequestHeaders.Add("X-JFrog-Art-Api", _artifactoryKey);
-
-            LoadInputConfiguration = LoadConfiguration();
-            _rootPaths = LoadInputConfiguration.GetSection("RootPaths").Get<List<string>>();
-            _videoExtensions = new HashSet<string>(LoadInputConfiguration.GetSection("VideoExtensions").Get<List<string>>());
-            _artifactoryUrl = LoadInputConfiguration["ArtifactoryUrl"];
 
             _localVideoFileManagementService = localVideoFileManagementService;
             _cloudVideoFileManagementService = cloudVideoFileManagementService;
@@ -166,8 +156,6 @@ namespace VideoLibraryManager.ViewModel
                 }
             }
         }
-
-        public IConfiguration LoadInputConfiguration { get; set; }
 
         public string SearchText
         {
@@ -693,10 +681,6 @@ namespace VideoLibraryManager.ViewModel
         private CloudVideoFile _cloudSelectedVideo;
         private MediaElement _mediaElement;
         private ObservableCollection<FolderViewModel> _filteredFolders;
-        private readonly List<string>? _rootPaths;
-        private readonly HashSet<string> _videoExtensions;
-        private readonly string? _artifactoryUrl;
-        private readonly string? _artifactoryKey;
         private readonly ILogger _logger;
         private readonly ILocalVideoFileManagementService _localVideoFileManagementService;
         private readonly IVideoPlayerService _videoPlayerService;

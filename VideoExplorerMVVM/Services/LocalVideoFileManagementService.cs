@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using VideoLibraryManager.Helper;
 using VideoLibraryManager.Model;
 using static System.Windows.MessageBox;
 
@@ -14,14 +15,22 @@ namespace VideoLibraryManager.Services
         private readonly IConfiguration _loadInputConfiguration;
         private readonly List<string>? _rootPaths;
         private readonly HashSet<string> _videoExtensions;
-        
-        public LocalVideoFileManagementService(ILogger logger)
+        private readonly IDirectoryHelper _directoryHelper;
+
+        public LocalVideoFileManagementService(ILogger logger) : this(logger, new FileSystemHelper())
+        {
+            
+        }
+
+        public LocalVideoFileManagementService(ILogger logger, IDirectoryHelper directoryHelper)
         {
             _logger = logger;
             _loadInputConfiguration = LoadConfiguration();
             _rootPaths = _loadInputConfiguration.GetSection("RootPaths").Get<List<string>>();
             _videoExtensions = new HashSet<string>(_loadInputConfiguration.GetSection("VideoExtensions").Get<List<string>>());
+            _directoryHelper = directoryHelper;
         }
+
         public async Task<IEnumerable<VideoFile>> LoadVideosAsync()
         {
             return await GetVideoFilesAsync(_rootPaths).ConfigureAwait(false);
@@ -38,7 +47,7 @@ namespace VideoLibraryManager.Services
 
             var tasks = rootPaths.Select(async rootPath =>
             {
-                if (Directory.Exists(rootPath))
+                if (_directoryHelper.DoesFileExist(rootPath))
                 {
                     var allFiles = new List<string>();
                     await Task.Run(() => GetFiles(rootPath, allFiles));
@@ -82,13 +91,13 @@ namespace VideoLibraryManager.Services
         {
             try
             {
-                var fileEntries = Directory.GetFiles(path);
+                var fileEntries = _directoryHelper.GetFiles(path);
                 lock (files)
                 {
                     files.AddRange(fileEntries);
                 }
 
-                var directoryEntries = Directory.GetDirectories(path);
+                var directoryEntries = _directoryHelper.GetDirectories(path);
                 Parallel.ForEach(directoryEntries, directory =>
                 {
                     GetFiles(directory, files);

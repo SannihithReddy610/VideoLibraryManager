@@ -9,5 +9,7 @@ namespace VideoLibraryManager.Helper
     public interface IDirectoryHelper
     {
         bool DoesFileExist(string path);
+        string[] GetFiles(string path);
+        string[] GetDirectories(string path);
     }
 }
