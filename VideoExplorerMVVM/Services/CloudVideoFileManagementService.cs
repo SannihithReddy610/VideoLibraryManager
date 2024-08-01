@@ -9,6 +9,9 @@ namespace VideoLibraryManager.Services
 {
     public class CloudVideoFileManagementService(VideoManagerViewModel videoManagerViewModel) : ICloudVideoFileManagementService
     {
+        /// <summary>
+        /// Downloads a video from the cloud to the user's local documents folder.
+        /// </summary>
         public async Task DownloadVideo()
         {
             var fileName = videoManagerViewModel.CloudSelectedVideo.FileName;
@@ -29,6 +32,9 @@ namespace VideoLibraryManager.Services
             }
         }
 
+        /// <summary>
+        /// Deletes a video file from the cloud and its previous version, if it exists.
+        /// </summary>
         public async Task DeleteCloudFileAsync()
         {
             var fileName = videoManagerViewModel.CloudSelectedVideo.FileName;
@@ -48,6 +54,9 @@ namespace VideoLibraryManager.Services
             }
         }
 
+        /// <summary>
+        /// Uploads a new version of a video to the cloud.
+        /// </summary>
         public async Task UploadNewVersionOfVideo()
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -63,6 +72,9 @@ namespace VideoLibraryManager.Services
             }
         }
 
+        /// <summary>
+        /// Downloads a previous version of a video from the cloud to the user's local documents folder.
+        /// </summary>
         public async Task DownloadPreviousVersionOfVideo()
         {
             var fileName = videoManagerViewModel.CloudSelectedVideo.FileName;

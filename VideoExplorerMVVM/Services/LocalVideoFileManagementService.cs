@@ -10,6 +10,9 @@ namespace VideoLibraryManager.Services
     public class LocalVideoFileManagementService(VideoManagerViewModel videoManagerViewModel)
         : ILocalVideoFileManagementService
     {
+        /// <summary>
+        /// Renames the selected video file.
+        /// </summary>
         public void RenameVideo()
         {
             // Ask the user for a new file name
@@ -45,6 +48,9 @@ namespace VideoLibraryManager.Services
             }
         }
 
+        /// <summary>
+        /// Deletes the selected video file.
+        /// </summary>
         public void DeleteVideo()
         {
             MessageBoxResult result = Show($"Are you sure you want to permanently delete '{videoManagerViewModel.SelectedVideo.FileName}'?",
@@ -73,6 +79,9 @@ namespace VideoLibraryManager.Services
             }
         }
 
+        /// <summary>
+        /// Uploads the selected video file to the cloud.
+        /// </summary>
         public async Task UploadVideo()
         {
             var filePath = videoManagerViewModel.SelectedVideo.FilePath;
