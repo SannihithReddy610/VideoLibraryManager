@@ -3,7 +3,7 @@ This is a WPF application (following the MVVM pattern) designed to view and mana
 
 1. *Video Management:*
 
-- Lists all available cloud and local videos (".mp4", ".avi", ".mkv") from "C:\Users" and "D:\", grouped by folders.
+- Lists all available cloud and local videos, grouped by folders.
 - Refresh button to reload the video library.
 - Search bar to filter local videos.
 - Displays metadata (full path, duration, file size, date modified) on hover for each local video.
