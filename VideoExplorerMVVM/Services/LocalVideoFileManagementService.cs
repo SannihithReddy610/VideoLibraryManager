@@ -47,7 +47,7 @@ namespace VideoLibraryManager.Services
 
             var tasks = rootPaths.Select(async rootPath =>
             {
-                if (_directoryHelper.DoesFileExist(rootPath))
+                if (_directoryHelper.DoesDirectoryExist(rootPath))
                 {
                     var allFiles = new List<string>();
                     await Task.Run(() => GetFiles(rootPath, allFiles));
@@ -120,14 +120,14 @@ namespace VideoLibraryManager.Services
             string newFilePath = Path.Combine(Path.GetDirectoryName(filePath), newFileName);
 
             // Check if the new file name already exists
-            if (File.Exists(newFilePath))
+            if (_directoryHelper.DoesFileExist(newFilePath))
             {
                 Show("A file with the new name already exists. Please choose a different name.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return "";
             }
 
             // Rename the file
-            File.Move(filePath, newFilePath);
+            _directoryHelper.MoveFile(filePath, newFilePath);
 
             return newFilePath;
 
@@ -139,9 +139,9 @@ namespace VideoLibraryManager.Services
         public void DeleteVideo(string filePath)
         {
 
-            if (File.Exists(filePath))
+            if (_directoryHelper.DoesFileExist(filePath))
             {
-                File.Delete(filePath);
+                _directoryHelper.DeleteFile(filePath);
             }
 
         }

@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Win32;
 using VideoLibraryManager.Model;
-using VideoLibraryManager.ViewModel;
 using static System.Windows.MessageBox;
 
 namespace VideoLibraryManager.Services
@@ -210,7 +209,7 @@ namespace VideoLibraryManager.Services
             return builder.Build();
         }
 
-        private HttpClient _httpClient;
+        public HttpClient _httpClient;
         private string _artifactoryKey;
         private IConfiguration _loadInputConfiguration;
         private readonly string? _artifactoryUrl;

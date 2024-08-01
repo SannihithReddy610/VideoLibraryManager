@@ -389,10 +389,13 @@ namespace VideoLibraryManager.ViewModel
         {
             try
             {
-                _videoPlayerService.PlayVideo(IsPaused, MediaElement, SelectedVideo.FilePath);
-                PlayingVideo = SelectedVideo.FileName;
-                IsPaused = false;
-                UpdateCanExecute();
+                if (SelectedVideo != null)
+                {
+                    _videoPlayerService.PlayVideo(IsPaused, MediaElement, SelectedVideo.FilePath);
+                    PlayingVideo = SelectedVideo.FileName;
+                    IsPaused = false;
+                    UpdateCanExecute();
+                }
             }
             catch (Exception ex)
             {
@@ -510,7 +513,7 @@ namespace VideoLibraryManager.ViewModel
                     // Clear the selected video
                     SelectedVideo = null;
                     OnPropertyChanged(nameof(FileName));
-                    _ = LoadVideosAsync();
+                    //_ = LoadVideosAsync();
                     StatusMessage = "Video deleted successfully.";
                 }
                 

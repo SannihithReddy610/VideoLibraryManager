@@ -1,0 +1,8 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=d56f451d_002D8836_002D47c2_002D99be_002Da22786414256/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="RenameVideoTest" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::34B17E6F-A4E4-4C08-9C9F-5BB84B933B96::net8.0-windows::VideoLibraryManager.Tests.LocalVideoFileManagementServiceTest.RenameVideoTest&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::34B17E6F-A4E4-4C08-9C9F-5BB84B933B96::net8.0-windows::VideoLibraryManager.Tests.LocalVideoFileManagementServiceTest.LoadVideosAsyncTest&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::34B17E6F-A4E4-4C08-9C9F-5BB84B933B96::net8.0-windows::VideoLibraryManager.Tests.LocalVideoFileManagementServiceTest.DeleteVideoTest&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>
