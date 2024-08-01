@@ -1,6 +1,4 @@
 ﻿using System.Windows.Controls;
-using VideoLibraryManager.Model;
-using VideoLibraryManager.ViewModel;
 
 namespace VideoLibraryManager.Services
 {

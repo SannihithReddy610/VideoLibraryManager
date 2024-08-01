@@ -80,8 +80,6 @@ namespace VideoLibraryManager.Services
         /// </summary>
         public async Task DownloadPreviousVersionOfVideo(string cloudSelectedFileName)
         {
-            //var fileName = videoManagerViewModel.CloudSelectedVideo.FileName;
-            //var configuration = videoManagerViewModel.LoadInputConfiguration;
             var artifactoryVersionUrl = _loadInputConfiguration["artifactoryVersionUrl"];
             var downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), cloudSelectedFileName);
             using (var response = await _httpClient.GetAsync($"{artifactoryVersionUrl}{cloudSelectedFileName}",
@@ -110,8 +108,6 @@ namespace VideoLibraryManager.Services
         {
             try
             {
-                //var fileName = videoManagerViewModel.CloudSelectedVideo.FileName;
-                //var configuration = videoManagerViewModel.LoadInputConfiguration;
                 var artifactoryUrl = _loadInputConfiguration["ArtifactoryUrl"];
                 var artifactoryVersionUrl = _loadInputConfiguration["artifactoryVersionUrl"];
                 var response = await _httpClient.GetAsync($"{artifactoryUrl}{fileName}",
@@ -143,7 +139,6 @@ namespace VideoLibraryManager.Services
         {
             try
             {
-                //var configuration = videoManagerViewModel.LoadInputConfiguration;
                 var artifactoryUrl = _loadInputConfiguration["ArtifactoryUrl"];
                 using (var content = new StreamContent(File.OpenRead(filePath)))
                 {
@@ -164,9 +159,7 @@ namespace VideoLibraryManager.Services
         /// </summary>
         public async Task<HttpResponseMessage> UploadVideo(string filePath)
         {
-            //var filePath = videoManagerViewModel.SelectedVideo.FilePath;
             var fileName = Path.GetFileName(filePath);
-
             var artifactoryUrl = _loadInputConfiguration["ArtifactoryUrl"];
 
             using (var content = new StreamContent(File.OpenRead(filePath)))
@@ -176,28 +169,6 @@ namespace VideoLibraryManager.Services
 
                 return response;
             }
-        }
-
-        /// <summary>
-        /// Extracts the file names from the given HTML content.
-        /// </summary>
-        /// <param name="htmlContent">The HTML content to extract file names from.</param>
-        private IEnumerable<CloudVideoFile> ExtractFileNames(string htmlContent)
-        {
-            var matches = System.Text.RegularExpressions.Regex.Matches(htmlContent, @"href=""([^""]*)""");
-            var cloudFileNames = new List<CloudVideoFile>();
-            foreach (System.Text.RegularExpressions.Match match in matches)
-            {
-                var fileName = match.Groups[1].Value;
-                if (!fileName.EndsWith("/"))
-                {
-                    cloudFileNames.Add(new CloudVideoFile(fileName)
-                    {
-                        FileName = fileName
-                    });
-                }
-            }
-            return cloudFileNames;
         }
 
         private IConfiguration LoadConfiguration()

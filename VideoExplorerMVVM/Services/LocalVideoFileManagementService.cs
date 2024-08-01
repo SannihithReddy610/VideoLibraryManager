@@ -17,10 +17,7 @@ namespace VideoLibraryManager.Services
         private readonly HashSet<string> _videoExtensions;
         private readonly IDirectoryHelper _directoryHelper;
 
-        public LocalVideoFileManagementService(ILogger logger) : this(logger, new FileSystemHelper())
-        {
-            
-        }
+        public LocalVideoFileManagementService(ILogger logger) : this(logger, new FileSystemHelper()) { }
 
         public LocalVideoFileManagementService(ILogger logger, IDirectoryHelper directoryHelper)
         {
