@@ -1,14 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Castle.Core.Logging;
-using VideoLibraryManager.Helper;
+﻿using VideoLibraryManager.Helper;
 using VideoLibraryManager.Services;
-using Microsoft.Extensions.Logging;
 using NSubstitute;
-using ILogger = NUnit.Framework.Internal.ILogger;
 
 namespace VideoLibraryManager.Tests
 {
@@ -25,9 +17,6 @@ namespace VideoLibraryManager.Tests
             _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger>();
             _directoryHelper = Substitute.For<IDirectoryHelper>();
             _localVideoFileManagementService = new LocalVideoFileManagementService(_logger, _directoryHelper);
-
-
-
         }
 
         [Test]
@@ -60,7 +49,9 @@ namespace VideoLibraryManager.Tests
             _directoryHelper.DoesDirectoryExist(Arg.Any<string>()).Returns(true);
             _directoryHelper.GetFiles("D:\\Videos\\").Returns(sampleFiles);
             _directoryHelper.GetDirectories("D:\\").Returns(sampleDirectories);
-           var videoFiles = await _localVideoFileManagementService.LoadVideosAsync();
+           
+            var videoFiles = await _localVideoFileManagementService.LoadVideosAsync();
+
            _directoryHelper.Received().GetFiles("D:\\Videos\\");
            _directoryHelper.Received().GetDirectories("D:\\");
 

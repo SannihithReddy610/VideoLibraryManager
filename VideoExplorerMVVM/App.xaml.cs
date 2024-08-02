@@ -16,10 +16,10 @@ namespace VideoLibraryManager
         #region Constructor
         public App()
         {
-            // Configure services
             var serviceCollection = new ServiceCollection();
             ConfigureServices(serviceCollection);
             ServiceProvider = serviceCollection.BuildServiceProvider();
+            _logger = ServiceProvider.GetRequiredService<ILogger<App>>();
         }
         #endregion
 
@@ -39,21 +39,33 @@ namespace VideoLibraryManager
         #region Protected Methods
         protected override void OnStartup(StartupEventArgs e)
         {
-            base.OnStartup(e);
-            _mutex = new Mutex(true, "$VideoLibraryManager$", out var aIsNewInstance);
-            if (!aIsNewInstance)
+            try
             {
-                MessageBox.Show("Video Library Manager is already running...");
+                base.OnStartup(e);
+                _mutex = new Mutex(true, "$VideoLibraryManager$", out var isNewInstance);
+                if (!isNewInstance)
+                {
+                    _logger.LogWarning("Video Library Manager is already running.");
+                    MessageBox.Show("Video Library Manager is already running...");
+                    Current.Shutdown();
+                    return;
+                }
+
+                var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+                mainWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during application startup.");
+                MessageBox.Show("An unexpected error occurred. The application will now close.");
                 Current.Shutdown();
             }
-
-            var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
-            mainWindow.Show();
-
         }
+        #endregion
 
+        #region Private Fields
         private Mutex _mutex;
-
+        private readonly ILogger _logger;
         #endregion
     }
 

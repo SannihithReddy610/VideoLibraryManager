@@ -120,7 +120,7 @@
         </Grid>
 
         <StackPanel Grid.Column="1">
-            <MediaElement Name="MediaElement" LoadedBehavior="Manual" MediaOpened="MediaElement_MediaOpened" MediaEnded="MediaElement_MediaEnded" Margin="10,30,10,0"/>
+            <MediaElement Name="MediaElement" LoadedBehavior="Manual" UnloadedBehavior="Manual" MediaOpened="MediaElement_MediaOpened" MediaEnded="MediaElement_MediaEnded" Margin="10,30,10,0"/>
             <TextBlock Text="{Binding PlayingVideo}" VerticalAlignment="Bottom"  HorizontalAlignment="Center" Margin="10" FontSize="16"/>
             <StackPanel Orientation="Horizontal">
                 <Button Content="Play" Command="{Binding PlayCommand}" Height="24" Width="100" Margin="10,10,10,0"/>

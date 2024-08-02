@@ -23,7 +23,7 @@ namespace VideoLibraryManager.ViewModel
         #region Constructor
         public VideoManagerViewModel(ILogger<VideoManagerViewModel> logger) : this(new CloudVideoFileManagementService(), new LocalVideoFileManagementService(logger), new VideoPlayerService(), logger)
         {
-            
+
         }
 
         public VideoManagerViewModel(ICloudVideoFileManagementService cloudVideoFileManagementService, ILocalVideoFileManagementService localVideoFileManagementService, IVideoPlayerService videoPlayerService, ILogger logger)
@@ -82,8 +82,6 @@ namespace VideoLibraryManager.ViewModel
                 }
             }
         }
-
-        public HttpClient HttpClient { get; set; }
 
         public CloudVideoFile CloudSelectedVideo
         {
@@ -203,6 +201,9 @@ namespace VideoLibraryManager.ViewModel
 
         public ObservableCollection<CloudVideoFile> CloudVideos { get; }
 
+        public Visibility FolderListVisibility => IsFullScreen ? Visibility.Collapsed : Visibility.Visible;
+
+        #region Commands
         public IAsyncRelayCommand LoadVideosCommand { get; }
 
         public IAsyncRelayCommand LoadCloudVideosCommand { get; }
@@ -232,81 +233,16 @@ namespace VideoLibraryManager.ViewModel
         public ICommand DownloadPreviousVersionCommand { get; }
 
         public ICommand DownloadFileCommand { get; }
+        #endregion
 
-        public Visibility FolderListVisibility => IsFullScreen ? Visibility.Collapsed : Visibility.Visible;
         #endregion
 
         #region Private Methods
-        /// <summary>
-        /// Loads video files asynchronously from specified directories, groups them by folder, 
-        /// and updates the Folders collection.
-        /// </summary>
-        public async Task LoadVideosAsync()
-        {
-            StatusMessage = "Loading videos...";
-            try
-            {
-                var videoFiles = await _localVideoFileManagementService.LoadVideosAsync();
-
-                await Current.Dispatcher.InvokeAsync(() =>
-                {
-                    Folders.Clear();
-                    var groupedVideos = videoFiles.GroupBy(v => v.FolderPath);
-
-                    foreach (var group in groupedVideos)
-                    {
-                        var folderViewModel = new FolderViewModel(group.Key);
-                        foreach (var video in group)
-                        {
-                            folderViewModel.Videos.Add(video);
-                        }
-                        Folders.Add(folderViewModel);
-                    }
-                    _ = FilterVideosAsync();
-                });
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"An error occurred while loading local videos: {ex.Message}";
-                _logger.LogError(ex, "An error occurred while loading local videos");
-            }
-            finally
-            {
-                StatusMessage = "Local Videos loaded successfully.";
-            }
-        }
-
-        /// <summary>
-        /// Loads the list of video files available in the cloud and updates the UI.
-        /// </summary>
-        public async Task LoadCloudVideosAsync()
-        {
-            try
-            {
-                var response = await _cloudVideoFileManagementService.LoadCloudVideosAsync();
-
-                await Current.Dispatcher.InvokeAsync(() =>
-                {
-                    var fileList = ExtractFileNames(response);
-
-                    CloudVideos.Clear();
-                    foreach (var file in fileList)
-                    {
-                        CloudVideos.Add(file);
-                    }
-                    StatusMessage = "Cloud Videos loaded successfully.";
-                });
-            }
-            catch (Exception ex)
-            {
-                Show(ex.Message);
-            }
-        }
-
+        #region Video Loading and Filtering
         /// <summary>
         /// Synchronizes the videos by clearing the current folders and reloading the videos.
         /// </summary>
-        public async Task SyncVideosAsync()
+        private async Task SyncVideosAsync()
         {
             try
             {
@@ -330,7 +266,7 @@ namespace VideoLibraryManager.ViewModel
         /// Otherwise, videos whose filenames contain the search text are displayed.
         /// </summary>
         /// <returns>A Task representing the asynchronous operation.</returns>
-        public async Task FilterVideosAsync()
+        private async Task FilterVideosAsync()
         {
             try
             {
@@ -379,9 +315,9 @@ namespace VideoLibraryManager.ViewModel
                 Show(ex.Message);
             }
         }
+        #endregion
 
         #region VideoPlayerService
-
         /// <summary>
         /// Plays the selected video in the MediaElement control if present, updates playback state variables.
         /// </summary>
@@ -394,6 +330,7 @@ namespace VideoLibraryManager.ViewModel
                     _videoPlayerService.PlayVideo(IsPaused, MediaElement, SelectedVideo.FilePath);
                     PlayingVideo = SelectedVideo.FileName;
                     IsPaused = false;
+                    IsPlaying = true;
                     UpdateCanExecute();
                 }
             }
@@ -422,6 +359,7 @@ namespace VideoLibraryManager.ViewModel
             {
                 _videoPlayerService.Pause(MediaElement);
                 IsPaused = true;
+                IsPlaying = false;
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -438,6 +376,7 @@ namespace VideoLibraryManager.ViewModel
             try
             {
                 _videoPlayerService.Stop(MediaElement);
+                IsPlaying = false;
                 UpdateCanExecute();
             }
             catch (Exception ex)
@@ -451,11 +390,59 @@ namespace VideoLibraryManager.ViewModel
         /// </summary>
         private void ToggleFullScreen()
         {
-            IsFullScreen = !IsFullScreen;
+            if (IsPlaying)
+            {
+                IsFullScreen = !IsFullScreen;
+                MediaElement.Play();
+            }
+            else
+            {
+                IsFullScreen = !IsFullScreen;
+                PlayVideo();
+            }
         }
         #endregion
 
         #region LocalVideoFileManagementService
+        /// <summary>
+        /// Loads video files asynchronously from specified directories, groups them by folder, 
+        /// and updates the Folders collection.
+        /// </summary>
+        private async Task LoadVideosAsync()
+        {
+            StatusMessage = "Loading videos...";
+            try
+            {
+                var videoFiles = await _localVideoFileManagementService.LoadVideosAsync();
+
+                await Current.Dispatcher.InvokeAsync(() =>
+                {
+                    Folders.Clear();
+                    var groupedVideos = videoFiles.GroupBy(v => v.FolderPath);
+
+                    foreach (var group in groupedVideos)
+                    {
+                        var folderViewModel = new FolderViewModel(group.Key);
+                        foreach (var video in group)
+                        {
+                            folderViewModel.Videos.Add(video);
+                        }
+                        Folders.Add(folderViewModel);
+                    }
+                    _ = FilterVideosAsync();
+                });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"An error occurred while loading local videos: {ex.Message}";
+                _logger.LogError(ex, "An error occurred while loading local videos");
+            }
+            finally
+            {
+                StatusMessage = "Local Videos loaded successfully.";
+            }
+        }
+
         /// <summary>
         /// Renames the selected video file.
         /// </summary>
@@ -513,14 +500,42 @@ namespace VideoLibraryManager.ViewModel
                     // Clear the selected video
                     SelectedVideo = null;
                     OnPropertyChanged(nameof(FileName));
-                    //_ = LoadVideosAsync();
                     StatusMessage = "Video deleted successfully.";
                 }
-                
+
             }
             catch (Exception ex)
             {
                 Show($"An error occurred while deleting the video: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        #endregion
+
+        #region CloudVideoFileManagementService
+        /// <summary>
+        /// Loads the list of video files available in the cloud and updates the UI.
+        /// </summary>
+        private async Task LoadCloudVideosAsync()
+        {
+            try
+            {
+                var response = await _cloudVideoFileManagementService.LoadCloudVideosAsync();
+
+                await Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var fileList = ExtractFileNames(response);
+
+                    CloudVideos.Clear();
+                    foreach (var file in fileList)
+                    {
+                        CloudVideos.Add(file);
+                    }
+                    StatusMessage = "Cloud Videos loaded successfully.";
+                });
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message);
             }
         }
 
@@ -535,9 +550,9 @@ namespace VideoLibraryManager.ViewModel
                 var response = await _cloudVideoFileManagementService.UploadVideo(SelectedVideo.FilePath);
                 if (response.IsSuccessStatusCode)
                 {
-                    Show($"{Path.GetFileName(SelectedVideo.FilePath)} uploaded successfully.");
                     await LoadCloudVideosAsync();
-                    StatusMessage = "Video Uploaded Successfully";
+                    StatusMessage = "";
+                    Show($"{Path.GetFileName(SelectedVideo.FilePath)} uploaded successfully.");
                 }
                 else
                 {
@@ -549,9 +564,7 @@ namespace VideoLibraryManager.ViewModel
                 Show(ex.Message);
             }
         }
-        #endregion
 
-        #region CloudVideoFileManagementService
         /// <summary>
         /// Upload a new version of the video which is on cloud
         /// </summary>
@@ -562,6 +575,7 @@ namespace VideoLibraryManager.ViewModel
                 StatusMessage = "Uploading new version. You will be notified";
                 await _cloudVideoFileManagementService.UploadNewVersionOfVideo(CloudSelectedVideo.FileName);
                 StatusMessage = "";
+                Show("New version uploaded successfully");
             }
             catch (Exception ex)
             {
@@ -583,7 +597,8 @@ namespace VideoLibraryManager.ViewModel
             }
             catch (Exception ex)
             {
-                Show(ex.Message);
+                _logger.LogError(ex, "File not found");
+                Show("No old version available for the selected video", ex.Message);
             }
         }
 
@@ -625,7 +640,7 @@ namespace VideoLibraryManager.ViewModel
         }
         #endregion
 
-
+        #region Helper Methods
         /// <summary>
         /// Notifies play, pause and stop commands about potential changes in their execution state.
         /// </summary>
@@ -657,18 +672,7 @@ namespace VideoLibraryManager.ViewModel
             }
             return cloudFileNames;
         }
-
-        /// <summary>
-        /// Loads configuration to read data from Json file
-        /// </summary>
-        private IConfiguration LoadConfiguration()
-        {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-
-            return builder.Build();
-        }
+        #endregion
         #endregion
 
         #region Private Fields
@@ -688,8 +692,7 @@ namespace VideoLibraryManager.ViewModel
         private readonly ILocalVideoFileManagementService _localVideoFileManagementService;
         private readonly IVideoPlayerService _videoPlayerService;
         private readonly ICloudVideoFileManagementService _cloudVideoFileManagementService;
-        private readonly IDirectoryHelper _directoryHelper;
-
+        //private readonly IDirectoryHelper _directoryHelper;
         #endregion
 
     }

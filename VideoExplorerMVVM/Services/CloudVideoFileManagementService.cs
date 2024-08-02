@@ -95,6 +95,9 @@ namespace VideoLibraryManager.Services
             }
         }
 
+        /// <summary>
+        /// Gets the list of video files available on cloud
+        /// </summary>
         public async Task<string> LoadCloudVideosAsync()
         {
             return await _httpClient.GetStringAsync(_loadInputConfiguration["ArtifactoryUrl"]);
@@ -145,7 +148,6 @@ namespace VideoLibraryManager.Services
                     content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
                     await _httpClient.PutAsync(artifactoryUrl + cloudSelectedFileName, content);
                 }
-                Show("New version uploaded successfully");
             }
             catch (Exception ex)
             {
