@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using VideoLibraryManager.ViewModel;
 
 namespace VideoLibraryManager
 {
@@ -16,6 +17,6 @@ namespace VideoLibraryManager
         }
 
         public static readonly DependencyProperty DataProperty =
-            DependencyProperty.Register("Data", typeof(object), typeof(BindingProxy), new UIPropertyMetadata(null));
+            DependencyProperty.Register("Data", typeof(VideoManagerViewModel), typeof(BindingProxy), new UIPropertyMetadata(null));
     }
 }
